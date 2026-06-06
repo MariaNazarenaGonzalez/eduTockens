@@ -1,978 +1,833 @@
-
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduPoints</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --blue: #2563EB;
-    --blue-light: #EFF6FF;
-    --blue-mid: #BFDBFE;
-    --green: #22C55E;
-    --green-light: #F0FDF4;
-    --green-mid: #BBF7D0;
-    --gray: #F5F7FA;
-    --gray-mid: #E2E8F0;
-    --text: #0F172A;
-    --text-2: #475569;
-    --text-3: #94A3B8;
-    --white: #fff;
-    --red: #EF4444;
-    --amber: #F59E0B;
-    --radius: 16px;
-    --radius-sm: 10px;
-    font-family: 'Sora', sans-serif;
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --primary:#5B5BF7;--primary-dark:#4747d6;--secondary:#7C3AED;
+    --bg:#F8FAFC;--card:#FFFFFF;--success:#22C55E;--error:#EF4444;
+    --text:#0F172A;--text-muted:#64748B;--text-light:#94A3B8;
+    --border:#E2E8F0;--radius:16px;--radius-sm:10px;
+    --shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(91,91,247,.06);
+    --shadow-lg:0 8px 32px rgba(91,91,247,.12);
   }
-
-  .app { min-height: 600px; background: var(--gray); position: relative; overflow: hidden; }
-
-  /* screens */
-  .screen { display: none; padding: 0; min-height: 600px; flex-direction: column; }
-  .screen.active { display: flex; }
-
-  /* TOP NAV */
-  .topbar {
-    background: var(--white);
-    border-bottom: 0.5px solid var(--gray-mid);
-    padding: 14px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-shrink: 0;
-  }
-  .topbar-logo { font-size: 17px; font-weight: 600; color: var(--blue); display: flex; align-items: center; gap: 7px; }
-  .topbar-logo span { color: var(--text); }
-  .topbar-back {
-    background: none; border: none; cursor: pointer;
-    font-size: 14px; color: var(--text-2); display: flex; align-items: center; gap: 5px;
-    font-family: 'Sora', sans-serif; padding: 0;
-  }
-  .topbar-title { font-size: 15px; font-weight: 500; color: var(--text); }
-
-  /* SCROLLABLE CONTENT */
-  .content { flex: 1; overflow-y: auto; padding: 20px; }
-
-  /* BOTTOM NAV */
-  .bottomnav {
-    background: var(--white);
-    border-top: 0.5px solid var(--gray-mid);
-    display: flex;
-    flex-shrink: 0;
-  }
-  .nav-btn {
-    flex: 1; border: none; background: none; padding: 12px 4px 10px;
-    font-family: 'Sora', sans-serif; font-size: 10px; font-weight: 500;
-    color: var(--text-3); cursor: pointer; display: flex; flex-direction: column;
-    align-items: center; gap: 3px; transition: color 0.15s;
-  }
-  .nav-btn i { font-size: 20px; }
-  .nav-btn.active { color: var(--blue); }
-
-  /* CARDS */
-  .card {
-    background: var(--white);
-    border-radius: var(--radius);
-    border: 0.5px solid var(--gray-mid);
-    padding: 18px;
-    margin-bottom: 14px;
-  }
-  .card-sm { padding: 14px; border-radius: var(--radius-sm); }
-
-  /* BALANCE HERO */
-  .balance-hero {
-    background: var(--blue);
-    border-radius: var(--radius);
-    padding: 24px 22px;
-    margin-bottom: 14px;
-    color: var(--white);
-    position: relative;
-    overflow: hidden;
-  }
-  .balance-hero::before {
-    content: '';
-    position: absolute; top: -30px; right: -30px;
-    width: 120px; height: 120px;
-    background: rgba(255,255,255,0.07);
-    border-radius: 50%;
-  }
-  .balance-hero::after {
-    content: '';
-    position: absolute; bottom: -20px; right: 40px;
-    width: 80px; height: 80px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 50%;
-  }
-  .balance-label { font-size: 12px; font-weight: 400; opacity: 0.75; margin-bottom: 6px; letter-spacing: 0.04em; text-transform: uppercase; }
-  .balance-amount { font-size: 38px; font-weight: 600; letter-spacing: -1px; line-height: 1; }
-  .balance-unit { font-size: 14px; font-weight: 400; opacity: 0.8; margin-left: 4px; }
-  .balance-sub { font-size: 12px; opacity: 0.65; margin-top: 10px; }
-
-  /* STAT CARDS ROW */
-  .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
-  .stat-card { background: var(--white); border: 0.5px solid var(--gray-mid); border-radius: var(--radius-sm); padding: 14px; }
-  .stat-label { font-size: 11px; color: var(--text-3); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
-  .stat-value { font-size: 22px; font-weight: 600; color: var(--text); }
-  .stat-value.green { color: var(--green); }
-  .stat-value.blue { color: var(--blue); }
-
-  /* SECTION HEADER */
-  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-  .section-title { font-size: 14px; font-weight: 500; color: var(--text); }
-  .section-link { font-size: 12px; color: var(--blue); cursor: pointer; background: none; border: none; font-family: 'Sora', sans-serif; }
-
-  /* TRANSACTION ROW */
-  .tx-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 0.5px solid var(--gray-mid); }
-  .tx-row:last-child { border-bottom: none; padding-bottom: 0; }
-  .tx-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .tx-icon.earn { background: var(--green-light); color: var(--green); }
-  .tx-icon.spend { background: var(--blue-light); color: var(--blue); }
-  .tx-icon i { font-size: 18px; }
-  .tx-info { flex: 1; }
-  .tx-name { font-size: 13px; font-weight: 500; color: var(--text); }
-  .tx-date { font-size: 11px; color: var(--text-3); margin-top: 2px; }
-  .tx-amount { font-size: 14px; font-weight: 600; }
-  .tx-amount.earn { color: var(--green); }
-  .tx-amount.spend { color: var(--text-2); }
-
-  /* QUICK ACTIONS */
-  .quick-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
-  .qa-btn {
-    background: var(--white); border: 0.5px solid var(--gray-mid); border-radius: var(--radius-sm);
-    padding: 14px 6px 12px; display: flex; flex-direction: column; align-items: center; gap: 6px;
-    cursor: pointer; font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 500; color: var(--text-2);
-    transition: border-color 0.15s;
-  }
-  .qa-btn:hover { border-color: var(--blue); color: var(--blue); }
-  .qa-btn i { font-size: 20px; color: var(--blue); }
-
-  /* BADGE */
-  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 500; }
-  .badge.confirmed { background: var(--green-light); color: #166534; }
-  .badge.pending { background: #FEF9C3; color: #854D0E; }
-  .badge.blue { background: var(--blue-light); color: #1D4ED8; }
-
-  /* ACTIVITY ITEM */
-  .act-item { padding: 14px 0; border-bottom: 0.5px solid var(--gray-mid); }
-  .act-item:last-child { border-bottom: none; }
-  .act-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
-  .act-subject { font-size: 13px; font-weight: 500; color: var(--text); }
-  .act-points { font-size: 14px; font-weight: 600; color: var(--green); }
-  .act-meta { font-size: 11px; color: var(--text-3); }
-
-  /* BLOCKCHAIN DETAIL */
-  .chain-card { background: #0F172A; border-radius: var(--radius); padding: 18px; margin-bottom: 14px; }
-  .chain-label { font-size: 10px; color: #64748B; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
-  .chain-value { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #E2E8F0; word-break: break-all; line-height: 1.6; }
-  .chain-row { margin-bottom: 14px; }
-  .chain-row:last-child { margin-bottom: 0; }
-  .chain-divider { border: none; border-top: 0.5px solid #1E293B; margin: 14px 0; }
-
-  /* TIMELINE */
-  .timeline { padding-left: 20px; }
-  .tl-item { position: relative; padding: 0 0 20px 20px; }
-  .tl-item::before { content: ''; position: absolute; left: 0; top: 6px; width: 2px; bottom: 0; background: var(--gray-mid); }
-  .tl-item:last-child::before { display: none; }
-  .tl-dot { position: absolute; left: -5px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--blue); border: 2px solid var(--white); }
-  .tl-dot.green { background: var(--green); }
-  .tl-title { font-size: 13px; font-weight: 500; color: var(--text); }
-  .tl-sub { font-size: 11px; color: var(--text-3); margin-top: 3px; }
-
-  /* PRODUCT CARDS */
-  .prod-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .prod-card { background: var(--white); border: 0.5px solid var(--gray-mid); border-radius: var(--radius); overflow: hidden; }
-  .prod-img { height: 80px; display: flex; align-items: center; justify-content: center; font-size: 36px; }
-  .prod-img.blue { background: var(--blue-light); }
-  .prod-img.green { background: var(--green-light); }
-  .prod-body { padding: 12px; }
-  .prod-name { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
-  .prod-desc { font-size: 11px; color: var(--text-3); margin-bottom: 10px; }
-  .prod-footer { display: flex; align-items: center; justify-content: space-between; }
-  .prod-price { font-size: 13px; font-weight: 600; color: var(--blue); }
-  .btn-canjear {
-    background: var(--blue); color: var(--white); border: none; border-radius: 8px;
-    padding: 6px 12px; font-size: 11px; font-weight: 500; cursor: pointer; font-family: 'Sora', sans-serif;
-    transition: opacity 0.15s;
-  }
-  .btn-canjear:hover { opacity: 0.85; }
-
-  /* CONFIRM */
-  .confirm-product { display: flex; align-items: center; gap: 16px; padding: 20px; background: var(--gray); border-radius: var(--radius-sm); margin-bottom: 16px; }
-  .confirm-emoji { font-size: 40px; }
-  .confirm-name { font-size: 16px; font-weight: 600; color: var(--text); }
-  .confirm-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 0.5px solid var(--gray-mid); font-size: 14px; }
-  .confirm-row:last-child { border-bottom: none; }
-  .confirm-row span:first-child { color: var(--text-2); }
-  .confirm-row span:last-child { font-weight: 500; color: var(--text); }
-  .confirm-row.danger span:last-child { color: var(--red); }
-  .btn-primary {
-    width: 100%; background: var(--blue); color: var(--white); border: none; border-radius: 12px;
-    padding: 16px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: 'Sora', sans-serif;
-    margin-top: 18px; transition: opacity 0.15s;
-  }
-  .btn-primary:hover { opacity: 0.9; }
-  .btn-secondary {
-    width: 100%; background: var(--white); color: var(--text-2); border: 1px solid var(--gray-mid); border-radius: 12px;
-    padding: 14px; font-size: 14px; font-weight: 500; cursor: pointer; font-family: 'Sora', sans-serif;
-    margin-top: 10px; transition: background 0.15s;
-  }
-  .btn-secondary:hover { background: var(--gray); }
-
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+  .mono{font-family:'DM Mono',monospace}
+  
+  /* App shell */
+  .app{max-width:430px;margin:0 auto;min-height:100vh;background:var(--bg);position:relative;display:flex;flex-direction:column}
+  .screen{flex:1;overflow-y:auto;padding-bottom:80px;animation:fadeIn .2s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+  
+  /* Bottom Nav */
+  .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--card);border-top:1px solid var(--border);display:flex;z-index:100;padding:8px 0 16px}
+  .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:6px 4px;transition:all .15s}
+  .nav-icon{width:24px;height:24px;display:flex;align-items:center;justify-content:center}
+  .nav-label{font-size:10px;font-weight:500;color:var(--text-light);transition:color .15s}
+  .nav-item.active .nav-label{color:var(--primary)}
+  .nav-item.active .nav-icon svg{stroke:var(--primary)}
+  .nav-item .nav-icon svg{stroke:var(--text-light);transition:stroke .15s}
+  
+  /* Header */
+  .header{padding:20px 20px 8px;display:flex;align-items:center;justify-content:space-between}
+  .header-back{display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--primary);font-weight:500;font-size:15px}
+  .header-title{font-size:17px;font-weight:600;text-align:center;flex:1}
+  .header-action{width:32px;height:32px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid var(--border)}
+  
+  /* Cards */
+  .card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:20px;box-shadow:var(--shadow)}
+  .card-sm{padding:14px 16px}
+  
+  /* Balance Card */
+  .balance-card{background:linear-gradient(135deg,#5B5BF7 0%,#7C3AED 100%);border-radius:var(--radius);padding:24px;color:#fff;position:relative;overflow:hidden}
+  .balance-card::before{content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;background:rgba(255,255,255,.07);border-radius:50%}
+  .balance-card::after{content:'';position:absolute;bottom:-60px;left:-20px;width:200px;height:200px;background:rgba(255,255,255,.04);border-radius:50%}
+  .balance-label{font-size:12px;font-weight:500;opacity:.8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+  .balance-amount{font-size:52px;font-weight:600;line-height:1;display:flex;align-items:baseline;gap:8px}
+  .balance-unit{font-size:18px;font-weight:400;opacity:.7}
+  .balance-wallet{font-size:11px;opacity:.6;margin-top:10px;font-family:'DM Mono',monospace}
+  .balance-status{display:inline-flex;align-items:center;gap:5px;margin-top:12px;background:rgba(255,255,255,.15);border-radius:20px;padding:4px 10px;font-size:12px}
+  .dot-pulse{width:6px;height:6px;background:#4ade80;border-radius:50%;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+  
+  /* Metric cards */
+  .metrics-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:0 20px}
+  .metric-card{background:var(--card);border-radius:var(--radius-sm);border:1px solid var(--border);padding:14px 12px;text-align:center}
+  .metric-value{font-size:22px;font-weight:600;color:var(--primary);line-height:1.1}
+  .metric-label{font-size:10px;color:var(--text-muted);margin-top:4px;line-height:1.3}
+  
+  /* Transaction item */
+  .tx-item{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
+  .tx-item:hover{background:#F8FAFC}
+  .tx-item:last-child{border-bottom:none}
+  .tx-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .tx-icon.income{background:#F0FDF4}
+  .tx-icon.expense{background:#FFF1F1}
+  .tx-info{flex:1;min-width:0}
+  .tx-name{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tx-sub{font-size:12px;color:var(--text-muted);margin-top:2px}
+  .tx-amount{font-size:15px;font-weight:600;white-space:nowrap}
+  .tx-amount.income{color:var(--success)}
+  .tx-amount.expense{color:var(--error)}
+  
+  /* Badge */
+  .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:500}
+  .badge-success{background:#F0FDF4;color:#16A34A}
+  .badge-primary{background:#EEF2FF;color:var(--primary)}
+  .badge-muted{background:var(--bg);color:var(--text-muted);border:1px solid var(--border)}
+  .badge-warning{background:#FFFBEB;color:#D97706}
+  
+  /* Button */
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 24px;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:all .15s;border:none;width:100%}
+  .btn-primary{background:var(--primary);color:#fff}
+  .btn-primary:hover{background:var(--primary-dark);transform:translateY(-1px);box-shadow:0 4px 16px rgba(91,91,247,.3)}
+  .btn-primary:active{transform:translateY(0)}
+  .btn-outline{background:transparent;color:var(--primary);border:1.5px solid var(--primary)}
+  .btn-outline:hover{background:#EEF2FF}
+  .btn-ghost{background:transparent;color:var(--text-muted);border:none;font-size:14px}
+  .btn-danger{background:var(--error);color:#fff}
+  .btn-sm{padding:9px 16px;font-size:13px;width:auto;border-radius:8px}
+  
+  /* Section title */
+  .section-header{display:flex;align-items:center;justify-content:space-between;padding:20px 20px 12px}
+  .section-title{font-size:15px;font-weight:600}
+  .section-link{font-size:13px;color:var(--primary);cursor:pointer;font-weight:500}
+  
+  /* Avatar */
+  .avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#5B5BF7,#7C3AED);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:15px;flex-shrink:0}
+  
+  /* Input */
+  .input-group{margin-bottom:16px}
+  .input-label{font-size:13px;font-weight:500;color:var(--text-muted);margin-bottom:6px;display:block}
+  .input{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--border);font-family:'DM Sans',sans-serif;font-size:15px;color:var(--text);background:var(--card);transition:border-color .15s;outline:none}
+  .input:focus{border-color:var(--primary)}
+  select.input{-webkit-appearance:none;cursor:pointer}
+  
+  /* Tabs */
+  .tabs{display:flex;background:var(--bg);border-radius:10px;padding:3px;margin:0 20px 16px}
+  .tab{flex:1;padding:8px;text-align:center;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text-muted);transition:all .15s}
+  .tab.active{background:var(--card);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  
+  /* Blockchain explorer */
+  .hash-box{background:var(--bg);border-radius:8px;padding:10px 12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text-muted);word-break:break-all;border:1px solid var(--border)}
+  .explorer-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+  .explorer-row:last-child{border-bottom:none}
+  .explorer-key{font-size:13px;color:var(--text-muted)}
+  .explorer-val{font-size:13px;font-weight:500;text-align:right;max-width:200px;overflow:hidden;text-overflow:ellipsis}
+  
+  /* Verified badge */
+  .verified{display:flex;align-items:center;gap:10px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;padding:14px 16px}
+  .verified-icon{width:36px;height:36px;background:#22C55E;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .verified-text{font-weight:500;color:#16A34A;font-size:14px}
+  .verified-sub{font-size:12px;color:#4ADE80;margin-top:2px}
+  
+  /* Success screen */
+  .success-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;padding:40px 20px;text-align:center}
+  .success-circle{width:96px;height:96px;background:linear-gradient(135deg,#22C55E,#16A34A);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:24px;box-shadow:0 8px 32px rgba(34,197,94,.25)}
+  
+  /* Product card */
+  .product-card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:16px;display:flex;flex-direction:column;gap:10px;cursor:pointer;transition:all .15s}
+  .product-card:hover{border-color:var(--primary);box-shadow:var(--shadow-lg);transform:translateY(-2px)}
+  .product-img{width:100%;height:80px;border-radius:8px;background:linear-gradient(135deg,#EEF2FF,#F5F3FF);display:flex;align-items:center;justify-content:center;font-size:36px}
+  .product-name{font-size:14px;font-weight:600}
+  .product-cost{font-size:13px;color:var(--primary);font-weight:500}
+  
+  /* Achievement */
+  .achievement{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--bg);border-radius:10px;border:1px solid var(--border)}
+  .achievement-icon{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#FEF3C7,#FDE68A);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+  .achievement-name{font-size:14px;font-weight:500}
+  .achievement-desc{font-size:12px;color:var(--text-muted);margin-top:2px}
+  
+  /* Commerce card */
+  .commerce-card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:18px;margin:0 20px 12px}
+  .commerce-header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .commerce-icon{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);display:flex;align-items:center;justify-content:center;font-size:22px}
+  .commerce-name{font-size:15px;font-weight:600}
+  .commerce-type{font-size:12px;color:var(--text-muted);margin-top:2px}
+  .commerce-detail{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--border)}
+  
+  /* Scroll container */
+  .px-20{padding:0 20px}
+  .gap-10{display:flex;flex-direction:column;gap:10px}
+  .gap-12{display:flex;flex-direction:column;gap:12px}
+  
   /* QR */
-  .qr-container { display: flex; flex-direction: column; align-items: center; padding: 20px; }
-  .qr-box { width: 180px; height: 180px; background: var(--white); border: 2px solid var(--text); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 20px 0; position: relative; }
-  .qr-inner { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; width: 140px; height: 140px; }
-  .qr-cell { border-radius: 2px; }
-  .qr-timer { display: flex; align-items: center; gap: 8px; background: #FEF9C3; padding: 10px 18px; border-radius: 20px; font-size: 13px; font-weight: 500; color: #854D0E; }
-
-  /* PROFILE */
-  .avatar-large { width: 72px; height: 72px; border-radius: 50%; background: var(--blue-light); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 600; color: var(--blue); margin: 0 auto 12px; }
-  .profile-name { text-align: center; font-size: 18px; font-weight: 600; color: var(--text); }
-  .profile-sub { text-align: center; font-size: 13px; color: var(--text-3); margin-top: 4px; }
-  .wallet-id { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3); text-align: center; margin-top: 8px; padding: 6px 14px; background: var(--gray); border-radius: 20px; display: inline-block; }
-  .stat-triple { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 14px; }
-  .stat-triple-item { text-align: center; padding: 14px 8px; background: var(--gray); border-radius: var(--radius-sm); }
-  .stat-triple-num { font-size: 20px; font-weight: 600; color: var(--text); }
-  .stat-triple-lbl { font-size: 10px; color: var(--text-3); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
-
-  /* ADMIN */
-  .admin-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
-  .admin-stat { background: var(--white); border: 0.5px solid var(--gray-mid); border-radius: var(--radius-sm); padding: 16px; }
-  .admin-stat-val { font-size: 26px; font-weight: 600; color: var(--text); }
-  .admin-stat-lbl { font-size: 11px; color: var(--text-3); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
-
-  .chart-bar-wrap { display: flex; align-items: flex-end; gap: 4px; height: 80px; padding-top: 8px; }
-  .chart-bar { flex: 1; border-radius: 4px 4px 0 0; background: var(--blue); opacity: 0.8; min-width: 0; transition: opacity 0.15s; }
-  .chart-bar:hover { opacity: 1; }
-  .chart-labels { display: flex; gap: 4px; margin-top: 6px; }
-  .chart-lbl { flex: 1; text-align: center; font-size: 9px; color: var(--text-3); min-width: 0; overflow: hidden; }
-
-  .table-wrap { overflow-x: auto; }
-  table.admin-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .admin-table th { text-align: left; padding: 8px; font-weight: 500; color: var(--text-3); border-bottom: 1px solid var(--gray-mid); }
-  .admin-table td { padding: 8px; color: var(--text); border-bottom: 0.5px solid var(--gray-mid); }
-  .admin-table tr:last-child td { border-bottom: none; }
-
-  /* EARN FORM */
-  .form-group { margin-bottom: 14px; }
-  .form-label { font-size: 12px; font-weight: 500; color: var(--text-2); margin-bottom: 6px; display: block; }
-  .form-input {
-    width: 100%; padding: 12px 14px; border: 1px solid var(--gray-mid); border-radius: var(--radius-sm);
-    font-family: 'Sora', sans-serif; font-size: 14px; color: var(--text); background: var(--white);
-    outline: none;
-  }
-  .form-input:focus { border-color: var(--blue); }
-
-  /* LOGIN */
-  .login-screen { background: var(--white); display: flex; flex-direction: column; min-height: 600px; }
-  .login-hero { background: var(--blue); padding: 50px 30px 40px; text-align: center; }
-  .login-logo { font-size: 32px; font-weight: 600; color: var(--white); letter-spacing: -1px; }
-  .login-tagline { font-size: 13px; color: rgba(255,255,255,0.7); margin-top: 8px; }
-  .login-body { padding: 30px 24px; flex: 1; }
-  .login-tabs { display: flex; background: var(--gray); border-radius: 10px; padding: 3px; margin-bottom: 24px; }
-  .login-tab { flex: 1; padding: 10px; text-align: center; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--text-3); transition: all 0.15s; border: none; background: none; font-family: 'Sora', sans-serif; }
-  .login-tab.active { background: var(--white); color: var(--text); }
+  .qr-container{background:var(--card);border-radius:var(--radius);padding:24px;text-align:center;border:1px solid var(--border)}
+  .qr-grid{display:grid;grid-template-columns:repeat(10,1fr);gap:3px;width:180px;margin:0 auto}
+  .qr-cell{aspect-ratio:1;border-radius:2px}
+  
+  /* Profile stat */
+  .stat-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
+  .stat-row:last-child{border-bottom:none}
+  
+  /* Confirm pay summary */
+  .pay-summary{background:var(--bg);border-radius:12px;padding:16px}
+  .pay-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0}
+  .pay-row+.pay-row{border-top:1px solid var(--border)}
+  .pay-row.total .pay-val{color:var(--primary);font-weight:600;font-size:17px}
+  
+  /* Animations */
+  .spin{animation:spin 1.5s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  
+  /* Scrollbar */
+  ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
 </style>
-
+</head>
+<body>
 <div class="app" id="app">
-
-  <!-- LOGIN -->
-  <div class="screen active login-screen" id="screen-login">
-    <div class="login-hero">
-      <div class="login-logo">🎓 EduToken</div>
-      <div class="login-tagline">Tu wallet educativa universitaria</div>
-    </div>
-    <div class="login-body">
-      <div class="login-tabs">
-        <button class="login-tab active" onclick="setLoginTab('student', this)">Estudiante</button>
-        <button class="login-tab" onclick="setLoginTab('admin', this)">Administrador</button>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Email institucional</label>
-        <input class="form-input" type="email" placeholder="legajo@universidad.edu.ar" value="45123@unr.edu.ar">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Contraseña</label>
-        <input class="form-input" type="password" placeholder="••••••••" value="••••••••">
-      </div>
-      <button class="btn-primary" id="login-btn" onclick="loginAction()">Ingresar</button>
-    </div>
-  </div>
-
-  <!-- STUDENT DASHBOARD -->
-  <div class="screen" id="screen-dashboard">
-    <div class="topbar">
-      <div class="topbar-logo">🎓 <span>EduToken</span></div>
-      <div style="font-size:12px; color:var(--text-3);">Hola, Valentina 👋</div>
-    </div>
-    <div class="content">
-      <div class="balance-hero">
-        <div class="balance-label">Saldo disponible</div>
-        <div class="balance-amount">1.240<span class="balance-unit">pts</span></div>
-        <div class="balance-sub">Wallet: edu:45123 · Actualizado hace 2 min</div>
-      </div>
-      <div class="stats-row">
-        <div class="stat-card">
-          <div class="stat-label">Ganados este mes</div>
-          <div class="stat-value green">+380</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Usados este mes</div>
-          <div class="stat-value blue">−140</div>
-        </div>
-      </div>
-      <div class="quick-actions">
-        <button class="qa-btn" onclick="go('historial')"><i class="ti ti-list-details" aria-hidden="true"></i>Historial</button>
-        <button class="qa-btn" onclick="go('catalogo')"><i class="ti ti-gift" aria-hidden="true"></i>Canjear</button>
-        <button class="qa-btn" onclick="go('blockchain')"><i class="ti ti-cube" aria-hidden="true"></i>Blockchain</button>
-        <button class="qa-btn" onclick="go('perfil')"><i class="ti ti-user" aria-hidden="true"></i>Perfil</button>
-      </div>
-      <div class="card">
-        <div class="section-header">
-          <span class="section-title">Actividad reciente</span>
-          <button class="section-link" onclick="go('historial')">Ver todo</button>
-        </div>
-        <div class="tx-row">
-          <div class="tx-icon earn"><i class="ti ti-school" aria-hidden="true"></i></div>
-          <div class="tx-info">
-            <div class="tx-name">Aprobación Parcial 1</div>
-            <div class="tx-date">Algoritmos — 3 jun 2026</div>
-          </div>
-          <div class="tx-amount earn">+150</div>
-        </div>
-        <div class="tx-row">
-          <div class="tx-icon spend"><i class="ti ti-coffee" aria-hidden="true"></i></div>
-          <div class="tx-info">
-            <div class="tx-name">Máquina A1 — Café</div>
-            <div class="tx-date">Campus Norte — 2 jun 2026</div>
-          </div>
-          <div class="tx-amount spend">−40</div>
-        </div>
-        <div class="tx-row">
-          <div class="tx-icon earn"><i class="ti ti-check" aria-hidden="true"></i></div>
-          <div class="tx-info">
-            <div class="tx-name">Asistencia + participación</div>
-            <div class="tx-date">Redes — 2 jun 2026</div>
-          </div>
-          <div class="tx-amount earn">+15</div>
-        </div>
-        <div class="tx-row">
-          <div class="tx-icon spend"><i class="ti ti-printer" aria-hidden="true"></i></div>
-          <div class="tx-info">
-            <div class="tx-name">Fotocopiadora Central</div>
-            <div class="tx-date">Biblioteca — 1 jun 2026</div>
-          </div>
-          <div class="tx-amount spend">−100</div>
-        </div>
-      </div>
-    </div>
-    <div class="bottomnav">
-      <button class="nav-btn active" onclick="go('dashboard')"><i class="ti ti-home" aria-hidden="true"></i>Inicio</button>
-      <button class="nav-btn" onclick="go('historial')"><i class="ti ti-list-details" aria-hidden="true"></i>Historial</button>
-      <button class="nav-btn" onclick="go('catalogo')"><i class="ti ti-gift" aria-hidden="true"></i>Canjear</button>
-      <button class="nav-btn" onclick="go('perfil')"><i class="ti ti-user" aria-hidden="true"></i>Perfil</button>
-    </div>
-  </div>
-
-  <!-- HISTORIAL -->
-  <div class="screen" id="screen-historial">
-    <div class="topbar">
-      <button class="topbar-back" onclick="go('dashboard')"><i class="ti ti-arrow-left" aria-hidden="true"></i> Inicio</button>
-      <div class="topbar-title">Historial Académico</div>
-      <div style="width:60px"></div>
-    </div>
-    <div class="content">
-      <div class="card">
-        <div class="act-item">
-          <div class="act-header">
-            <div>
-              <div class="act-subject">Algoritmos y Estructuras</div>
-              <div class="act-meta">Aprobación Parcial 1 · 3 jun 2026</div>
-            </div>
-            <div class="act-points">+150 pts</div>
-          </div>
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-top:6px;">
-            <span class="badge confirmed"><i class="ti ti-check" style="font-size:11px"></i> Confirmado</span>
-            <button class="section-link" onclick="go('blockchain')">Ver en blockchain →</button>
-          </div>
-        </div>
-        <div class="act-item">
-          <div class="act-header">
-            <div>
-              <div class="act-subject">Redes de Computadoras</div>
-              <div class="act-meta">Asistencia + participación · 2 jun 2026</div>
-            </div>
-            <div class="act-points">+15 pts</div>
-          </div>
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-top:6px;">
-            <span class="badge confirmed"><i class="ti ti-check" style="font-size:11px"></i> Confirmado</span>
-            <button class="section-link" onclick="go('blockchain')">Ver en blockchain →</button>
-          </div>
-        </div>
-        <div class="act-item">
-          <div class="act-header">
-            <div>
-              <div class="act-subject">Blockchain Distribuida</div>
-              <div class="act-meta">TP Integrador entregado · 30 may 2026</div>
-            </div>
-            <div class="act-points">+200 pts</div>
-          </div>
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-top:6px;">
-            <span class="badge confirmed"><i class="ti ti-check" style="font-size:11px"></i> Confirmado</span>
-            <button class="section-link" onclick="go('blockchain')">Ver en blockchain →</button>
-          </div>
-        </div>
-        <div class="act-item">
-          <div class="act-header">
-            <div>
-              <div class="act-subject">Algoritmos y Estructuras</div>
-              <div class="act-meta">Quiz inicio de clase · 28 may 2026</div>
-            </div>
-            <div class="act-points">+10 pts</div>
-          </div>
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-top:6px;">
-            <span class="badge confirmed"><i class="ti ti-check" style="font-size:11px"></i> Confirmado</span>
-            <button class="section-link" onclick="go('blockchain')">Ver en blockchain →</button>
-          </div>
-        </div>
-        <div class="act-item">
-          <div class="act-header">
-            <div>
-              <div class="act-subject">Redes de Computadoras</div>
-              <div class="act-meta">Peer review — TP Unidad 4 · 25 may 2026</div>
-            </div>
-            <div class="act-points">+20 pts</div>
-          </div>
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-top:6px;">
-            <span class="badge confirmed"><i class="ti ti-check" style="font-size:11px"></i> Confirmado</span>
-            <button class="section-link" onclick="go('blockchain')">Ver en blockchain →</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="bottomnav">
-      <button class="nav-btn" onclick="go('dashboard')"><i class="ti ti-home" aria-hidden="true"></i>Inicio</button>
-      <button class="nav-btn active" onclick="go('historial')"><i class="ti ti-list-details" aria-hidden="true"></i>Historial</button>
-      <button class="nav-btn" onclick="go('catalogo')"><i class="ti ti-gift" aria-hidden="true"></i>Canjear</button>
-      <button class="nav-btn" onclick="go('perfil')"><i class="ti ti-user" aria-hidden="true"></i>Perfil</button>
-    </div>
-  </div>
-
-  <!-- BLOCKCHAIN DETAIL -->
-  <div class="screen" id="screen-blockchain">
-    <div class="topbar">
-      <button class="topbar-back" onclick="go('historial')"><i class="ti ti-arrow-left" aria-hidden="true"></i> Historial</button>
-      <div class="topbar-title">Detalle Blockchain</div>
-      <div style="width:60px"></div>
-    </div>
-    <div class="content">
-      <div style="margin-bottom:14px; display:flex; align-items:center; gap:8px;">
-        <span class="badge confirmed"><i class="ti ti-check" style="font-size:11px"></i> Confirmado en bloque #1847</span>
-      </div>
-      <div class="chain-card">
-        <div class="chain-row">
-          <div class="chain-label">Hash del bloque</div>
-          <div class="chain-value">0000a3f8bc12d7e94f...</div>
-        </div>
-        <hr class="chain-divider">
-        <div class="chain-row">
-          <div class="chain-label">Hash de la transacción</div>
-          <div class="chain-value">7e2a1b4c9d0f3e8a6b...</div>
-        </div>
-        <hr class="chain-divider">
-        <div class="chain-row">
-          <div class="chain-label">Timestamp</div>
-          <div class="chain-value">2026-06-03 14:32:07 UTC</div>
-        </div>
-        <hr class="chain-divider">
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
-          <div class="chain-row" style="margin:0">
-            <div class="chain-label">Tipo</div>
-            <div class="chain-value" style="color:#4ADE80;">EARN</div>
-          </div>
-          <div class="chain-row" style="margin:0">
-            <div class="chain-label">Monto</div>
-            <div class="chain-value" style="color:#4ADE80;">+150 pts</div>
-          </div>
-        </div>
-        <hr class="chain-divider">
-        <div class="chain-row">
-          <div class="chain-label">Emisor</div>
-          <div class="chain-value">ACADEMIC_SYSTEM</div>
-        </div>
-        <hr class="chain-divider">
-        <div class="chain-row">
-          <div class="chain-label">Receptor</div>
-          <div class="chain-value">student:45123</div>
-        </div>
-        <hr class="chain-divider">
-        <div class="chain-row" style="margin:0">
-          <div class="chain-label">Concepto</div>
-          <div class="chain-value">PARCIAL1 — Algoritmos y Estructuras</div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="section-title" style="margin-bottom:14px">Trayectoria del bloque</div>
-        <div class="timeline">
-          <div class="tl-item">
-            <div class="tl-dot"></div>
-            <div class="tl-title">Transacción recibida</div>
-            <div class="tl-sub">14:31:55 UTC — Ingresó al pool de pendientes</div>
-          </div>
-          <div class="tl-item">
-            <div class="tl-dot"></div>
-            <div class="tl-title">Bloque #1847 armado</div>
-            <div class="tl-sub">14:32:01 UTC — 12 transacciones incluidas</div>
-          </div>
-          <div class="tl-item">
-            <div class="tl-dot"></div>
-            <div class="tl-title">Proof of Work completado</div>
-            <div class="tl-sub">14:32:07 UTC — Nonce: 4829371 · Worker GPU-3</div>
-          </div>
-          <div class="tl-item">
-            <div class="tl-dot green"></div>
-            <div class="tl-title">Confirmado en la cadena</div>
-            <div class="tl-sub">14:32:07 UTC — Saldo actualizado</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="bottomnav">
-      <button class="nav-btn" onclick="go('dashboard')"><i class="ti ti-home" aria-hidden="true"></i>Inicio</button>
-      <button class="nav-btn active" onclick="go('historial')"><i class="ti ti-list-details" aria-hidden="true"></i>Historial</button>
-      <button class="nav-btn" onclick="go('catalogo')"><i class="ti ti-gift" aria-hidden="true"></i>Canjear</button>
-      <button class="nav-btn" onclick="go('perfil')"><i class="ti ti-user" aria-hidden="true"></i>Perfil</button>
-    </div>
-  </div>
-
-  <!-- CATÁLOGO -->
-  <div class="screen" id="screen-catalogo">
-    <div class="topbar">
-      <button class="topbar-back" onclick="go('dashboard')"><i class="ti ti-arrow-left" aria-hidden="true"></i> Inicio</button>
-      <div class="topbar-title">Catálogo de Recompensas</div>
-      <div style="width:60px"></div>
-    </div>
-    <div class="content">
-      <div style="display:flex; gap:8px; margin-bottom:16px;">
-        <span class="badge blue" style="cursor:pointer">Todos</span>
-        <span style="font-size:12px; color:var(--text-3); padding:4px 12px; cursor:pointer;">Máquinas</span>
-        <span style="font-size:12px; color:var(--text-3); padding:4px 12px; cursor:pointer;">Fotocopiadoras</span>
-      </div>
-      <div class="prod-grid">
-        <div class="prod-card">
-          <div class="prod-img blue">☕</div>
-          <div class="prod-body">
-            <div class="prod-name">Café solo</div>
-            <div class="prod-desc">Máquina A1 — Campus Norte</div>
-            <div class="prod-footer">
-              <div class="prod-price">40 pts</div>
-              <button class="btn-canjear" onclick="go('confirmar')">Canjear</button>
-            </div>
-          </div>
-        </div>
-        <div class="prod-card">
-          <div class="prod-img green">🥤</div>
-          <div class="prod-body">
-            <div class="prod-name">Agua 500ml</div>
-            <div class="prod-desc">Máquina A1 — Campus Norte</div>
-            <div class="prod-footer">
-              <div class="prod-price">25 pts</div>
-              <button class="btn-canjear" onclick="go('confirmar')">Canjear</button>
-            </div>
-          </div>
-        </div>
-        <div class="prod-card">
-          <div class="prod-img blue">🍫</div>
-          <div class="prod-body">
-            <div class="prod-name">Barra cereal</div>
-            <div class="prod-desc">Máquina B2 — Biblioteca</div>
-            <div class="prod-footer">
-              <div class="prod-price">35 pts</div>
-              <button class="btn-canjear" onclick="go('confirmar')">Canjear</button>
-            </div>
-          </div>
-        </div>
-        <div class="prod-card">
-          <div class="prod-img green">🖨️</div>
-          <div class="prod-body">
-            <div class="prod-name">10 páginas B&N</div>
-            <div class="prod-desc">Fotocopiadora Central</div>
-            <div class="prod-footer">
-              <div class="prod-price">100 pts</div>
-              <button class="btn-canjear" onclick="go('confirmar')">Canjear</button>
-            </div>
-          </div>
-        </div>
-        <div class="prod-card">
-          <div class="prod-img blue">🖨️</div>
-          <div class="prod-body">
-            <div class="prod-name">5 páginas color</div>
-            <div class="prod-desc">Fotocopiadora Central</div>
-            <div class="prod-footer">
-              <div class="prod-price">150 pts</div>
-              <button class="btn-canjear" onclick="go('confirmar')">Canjear</button>
-            </div>
-          </div>
-        </div>
-        <div class="prod-card">
-          <div class="prod-img green">☕</div>
-          <div class="prod-body">
-            <div class="prod-name">Cortado</div>
-            <div class="prod-desc">Máquina C3 — Facultad</div>
-            <div class="prod-footer">
-              <div class="prod-price">50 pts</div>
-              <button class="btn-canjear" onclick="go('confirmar')">Canjear</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="bottomnav">
-      <button class="nav-btn" onclick="go('dashboard')"><i class="ti ti-home" aria-hidden="true"></i>Inicio</button>
-      <button class="nav-btn" onclick="go('historial')"><i class="ti ti-list-details" aria-hidden="true"></i>Historial</button>
-      <button class="nav-btn active" onclick="go('catalogo')"><i class="ti ti-gift" aria-hidden="true"></i>Canjear</button>
-      <button class="nav-btn" onclick="go('perfil')"><i class="ti ti-user" aria-hidden="true"></i>Perfil</button>
-    </div>
-  </div>
-
-  <!-- CONFIRMAR CANJE -->
-  <div class="screen" id="screen-confirmar">
-    <div class="topbar">
-      <button class="topbar-back" onclick="go('catalogo')"><i class="ti ti-arrow-left" aria-hidden="true"></i> Catálogo</button>
-      <div class="topbar-title">Confirmar Canje</div>
-      <div style="width:60px"></div>
-    </div>
-    <div class="content">
-      <div class="confirm-product">
-        <div class="confirm-emoji">☕</div>
-        <div>
-          <div class="confirm-name">Café solo</div>
-          <div style="font-size:13px; color:var(--text-3);">Máquina A1 — Campus Norte</div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="confirm-row">
-          <span>Costo del producto</span>
-          <span>40 pts</span>
-        </div>
-        <div class="confirm-row">
-          <span>Saldo actual</span>
-          <span>1.240 pts</span>
-        </div>
-        <div class="confirm-row">
-          <span>Saldo después del canje</span>
-          <span style="color:var(--green); font-weight:600;">1.200 pts</span>
-        </div>
-      </div>
-      <div style="background:var(--blue-light); border-radius:10px; padding:12px 14px; font-size:12px; color:#1D4ED8; display:flex; gap:8px; align-items:flex-start;">
-        <i class="ti ti-lock" style="font-size:16px; flex-shrink:0; margin-top:1px;" aria-hidden="true"></i>
-        <span>Esta operación quedará registrada de forma inmutable en la blockchain universitaria.</span>
-      </div>
-      <button class="btn-primary" onclick="go('qr')">Confirmar canje</button>
-      <button class="btn-secondary" onclick="go('catalogo')">Cancelar</button>
-    </div>
-  </div>
-
-  <!-- QR -->
-  <div class="screen" id="screen-qr">
-    <div class="topbar">
-      <button class="topbar-back" onclick="go('dashboard')"><i class="ti ti-arrow-left" aria-hidden="true"></i> Inicio</button>
-      <div class="topbar-title">Código de Canje</div>
-      <div style="width:60px"></div>
-    </div>
-    <div class="content">
-      <div class="qr-container">
-        <div style="text-align:center; margin-bottom:8px;">
-          <div style="font-size:16px; font-weight:600; color:var(--text);">Café solo</div>
-          <div style="font-size:13px; color:var(--text-3);">Máquina A1 — Campus Norte</div>
-        </div>
-        <div class="qr-box" id="qr-visual">
-          <canvas id="qr-canvas" width="140" height="140"></canvas>
-        </div>
-        <div class="qr-timer" id="qr-timer">
-          <i class="ti ti-clock" style="font-size:16px" aria-hidden="true"></i>
-          <span id="timer-text">Válido por 5:00</span>
-        </div>
-        <div style="margin-top:16px; text-align:center;">
-          <span class="badge confirmed"><i class="ti ti-check" style="font-size:11px"></i> Canje aprobado</span>
-        </div>
-        <div style="margin-top:12px; font-size:11px; color:var(--text-3); text-align:center; font-family:'JetBrains Mono', monospace;">TXN: a4f8bc12d7e9...</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- PERFIL -->
-  <div class="screen" id="screen-perfil">
-    <div class="topbar">
-      <button class="topbar-back" onclick="go('dashboard')"><i class="ti ti-arrow-left" aria-hidden="true"></i> Inicio</button>
-      <div class="topbar-title">Mi Perfil</div>
-      <div style="width:60px"></div>
-    </div>
-    <div class="content">
-      <div class="card" style="text-align:center; padding:24px;">
-        <div class="avatar-large">VG</div>
-        <div class="profile-name">Valentina García</div>
-        <div class="profile-sub">Legajo 45123 · Ingeniería en Sistemas</div>
-        <div style="margin-top:8px; display:flex; justify-content:center;">
-          <span class="wallet-id">edu:45123:0xA3F8...</span>
-        </div>
-      </div>
-      <div class="stat-triple">
-        <div class="stat-triple-item">
-          <div class="stat-triple-num" style="color:var(--green)">3.840</div>
-          <div class="stat-triple-lbl">pts ganados</div>
-        </div>
-        <div class="stat-triple-item">
-          <div class="stat-triple-num" style="color:var(--blue)">2.600</div>
-          <div class="stat-triple-lbl">pts usados</div>
-        </div>
-        <div class="stat-triple-item">
-          <div class="stat-triple-num">127</div>
-          <div class="stat-triple-lbl">actividades</div>
-        </div>
-      </div>
-      <div class="card" style="margin-top:14px;">
-        <div style="display:flex; flex-direction:column; gap:14px;">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="display:flex; align-items:center; gap:10px; font-size:14px; color:var(--text);">
-              <i class="ti ti-school" style="font-size:18px; color:var(--blue)" aria-hidden="true"></i>
-              Carrera
-            </div>
-            <span style="font-size:13px; color:var(--text-2); font-weight:500;">Ing. en Sistemas</span>
-          </div>
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="display:flex; align-items:center; gap:10px; font-size:14px; color:var(--text);">
-              <i class="ti ti-calendar" style="font-size:18px; color:var(--blue)" aria-hidden="true"></i>
-              Año de ingreso
-            </div>
-            <span style="font-size:13px; color:var(--text-2); font-weight:500;">2022</span>
-          </div>
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="display:flex; align-items:center; gap:10px; font-size:14px; color:var(--text);">
-              <i class="ti ti-cube" style="font-size:18px; color:var(--blue)" aria-hidden="true"></i>
-              Bloques minados
-            </div>
-            <span style="font-size:13px; color:var(--text-2); font-weight:500;">48 bloques</span>
-          </div>
-        </div>
-      </div>
-      <button class="btn-secondary" style="margin-top:14px;" onclick="go('login')">
-        <i class="ti ti-logout" style="font-size:16px; vertical-align:-2px; margin-right:6px" aria-hidden="true"></i>
-        Cerrar sesión
-      </button>
-    </div>
-    <div class="bottomnav">
-      <button class="nav-btn" onclick="go('dashboard')"><i class="ti ti-home" aria-hidden="true"></i>Inicio</button>
-      <button class="nav-btn" onclick="go('historial')"><i class="ti ti-list-details" aria-hidden="true"></i>Historial</button>
-      <button class="nav-btn" onclick="go('catalogo')"><i class="ti ti-gift" aria-hidden="true"></i>Canjear</button>
-      <button class="nav-btn active" onclick="go('perfil')"><i class="ti ti-user" aria-hidden="true"></i>Perfil</button>
-    </div>
-  </div>
-
-  <!-- ADMIN DASHBOARD -->
-  <div class="screen" id="screen-admin">
-    <div class="topbar">
-      <div class="topbar-logo">🎓 <span>Admin</span></div>
-      <button onclick="go('earn')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:500;cursor:pointer;font-family:'Sora',sans-serif;">+ Emitir pts</button>
-    </div>
-    <div class="content">
-      <div class="admin-stats">
-        <div class="admin-stat">
-          <div class="admin-stat-val" style="color:var(--blue)">2.847</div>
-          <div class="admin-stat-lbl">Estudiantes</div>
-        </div>
-        <div class="admin-stat">
-          <div class="admin-stat-val">18.423</div>
-          <div class="admin-stat-lbl">Transacciones</div>
-        </div>
-        <div class="admin-stat">
-          <div class="admin-stat-val" style="color:var(--text-2)">1.531</div>
-          <div class="admin-stat-lbl">Bloques minados</div>
-        </div>
-        <div class="admin-stat">
-          <div class="admin-stat-val" style="color:var(--green)">284K</div>
-          <div class="admin-stat-lbl">Tokens emitidos</div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="section-title" style="margin-bottom:14px">Emisiones — últimos 7 días</div>
-        <div class="chart-bar-wrap">
-          <div class="chart-bar" style="height:45%"></div>
-          <div class="chart-bar" style="height:60%"></div>
-          <div class="chart-bar" style="height:35%"></div>
-          <div class="chart-bar" style="height:80%"></div>
-          <div class="chart-bar" style="height:70%"></div>
-          <div class="chart-bar" style="height:55%; background:var(--green)"></div>
-          <div class="chart-bar" style="height:90%; background:var(--green)"></div>
-        </div>
-        <div class="chart-labels">
-          <div class="chart-lbl">L</div><div class="chart-lbl">Ma</div>
-          <div class="chart-lbl">Mi</div><div class="chart-lbl">J</div>
-          <div class="chart-lbl">V</div><div class="chart-lbl">S</div>
-          <div class="chart-lbl">Hoy</div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="section-title" style="margin-bottom:12px">Últimas transacciones</div>
-        <div class="table-wrap">
-          <table class="admin-table">
-            <tr><th>Estudiante</th><th>Tipo</th><th>Pts</th><th>Estado</th></tr>
-            <tr>
-              <td>student:45123</td>
-              <td><span class="badge confirmed" style="font-size:10px">EARN</span></td>
-              <td style="color:var(--green)">+150</td>
-              <td><span class="badge confirmed" style="font-size:10px">✓</span></td>
-            </tr>
-            <tr>
-              <td>student:38491</td>
-              <td><span class="badge confirmed" style="font-size:10px">EARN</span></td>
-              <td style="color:var(--green)">+10</td>
-              <td><span class="badge confirmed" style="font-size:10px">✓</span></td>
-            </tr>
-            <tr>
-              <td>student:45123</td>
-              <td><span class="badge blue" style="font-size:10px">SPEND</span></td>
-              <td style="color:var(--text-2)">−40</td>
-              <td><span class="badge confirmed" style="font-size:10px">✓</span></td>
-            </tr>
-            <tr>
-              <td>student:51204</td>
-              <td><span class="badge confirmed" style="font-size:10px">EARN</span></td>
-              <td style="color:var(--green)">+200</td>
-              <td><span class="badge pending" style="font-size:10px">⏳</span></td>
-            </tr>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- EARN FORM -->
-  <div class="screen" id="screen-earn">
-    <div class="topbar">
-      <button class="topbar-back" onclick="go('admin')"><i class="ti ti-arrow-left" aria-hidden="true"></i> Admin</button>
-      <div class="topbar-title">Emitir Puntos</div>
-      <div style="width:60px"></div>
-    </div>
-    <div class="content">
-      <div class="card">
-        <div class="form-group">
-          <label class="form-label">Legajo del estudiante</label>
-          <input class="form-input" type="text" placeholder="Ej: 45123" value="45123">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Actividad</label>
-          <select class="form-input">
-            <option>Aprobación de parcial</option>
-            <option>TP Integrador entregado</option>
-            <option>Asistencia a clase</option>
-            <option>Participación oral</option>
-            <option>Quiz de inicio/cierre</option>
-            <option>Peer review</option>
-            <option>Hackathon interno</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Materia</label>
-          <input class="form-input" type="text" placeholder="Ej: Algoritmos y Estructuras" value="Blockchain Distribuida">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Puntos a otorgar</label>
-          <input class="form-input" type="number" placeholder="0" value="150">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Concepto (blockchain)</label>
-          <input class="form-input" type="text" placeholder="Ej: PARCIAL1" value="PARCIAL1">
-        </div>
-      </div>
-      <div style="background:var(--blue-light); border-radius:10px; padding:12px 14px; font-size:12px; color:#1D4ED8; display:flex; gap:8px; align-items:flex-start; margin-bottom:4px;">
-        <i class="ti ti-lock" style="font-size:16px; flex-shrink:0; margin-top:1px;" aria-hidden="true"></i>
-        <span>Se generará una transacción EARN firmada por ACADEMIC_SYSTEM y confirmada en la blockchain.</span>
-      </div>
-      <button class="btn-primary" onclick="go('admin')">Emitir puntos</button>
-    </div>
-  </div>
-
+  <div class="screen" id="screen-container"></div>
+  <nav class="bottom-nav" id="bottom-nav"></nav>
 </div>
 
 <script>
-let loginRole = 'student';
-let qrTimer = null;
-let qrSeconds = 300;
+const MOCK = {
+  student:{name:"Martina López",legajo:"UTN-2024-1234",carrera:"Ing. en Sistemas",email:"martina.lopez@universidad.edu.ar",avatar:"ML",balance:245,walletId:"0x7f3A...9c2B"},
+  grades:[
+    {id:1,subject:"Matemática I",type:"Examen Parcial",date:"20/05/24",grade:8,points:8,hash:"0xab12...f4e9",block:18432},
+    {id:2,subject:"Física II",type:"Trabajo Práctico",date:"15/05/24",grade:9,points:9,hash:"0xcd34...a1b2",block:18401},
+    {id:3,subject:"Química",type:"Examen Final",date:"10/05/24",grade:7,points:7,hash:"0xef56...c3d4",block:18375},
+    {id:4,subject:"Economía",type:"Trabajo Práctico",date:"05/05/24",grade:6,points:6,hash:"0x1234...e5f6",block:18340},
+    {id:5,subject:"Programación",type:"Examen Parcial",date:"02/05/24",grade:10,points:10,hash:"0x5678...g7h8",block:18310},
+  ],
+  transactions:[
+    {id:1,type:"income",name:"Matemática I - Examen",sub:"20/05/24",amount:"+8 pts",hash:"0xab12...f4e9"},
+    {id:2,type:"income",name:"Física II - TP",sub:"15/05/24",amount:"+9 pts",hash:"0xcd34...a1b2"},
+    {id:3,type:"expense",name:"Snack – Máq. #12",sub:"14/05/24",amount:"-20 pts",hash:"0xdc98...z2y1"},
+    {id:4,type:"income",name:"Química - Examen",sub:"10/05/24",amount:"+7 pts",hash:"0xef56...c3d4"},
+    {id:5,type:"expense",name:"Fotocopia – Biblioteca",sub:"08/05/24",amount:"-15 pts",hash:"0xaa11...bb22"},
+    {id:6,type:"income",name:"Economía - TP",sub:"05/05/24",amount:"+6 pts",hash:"0x1234...e5f6"},
+  ],
+  products:{
+    expendedoras:[
+      {id:1,name:"Snack Clásico",cost:20,emoji:"🍟"},
+      {id:2,name:"Agua Mineral",cost:15,emoji:"💧"},
+      {id:3,name:"Gaseosa",cost:30,emoji:"🥤"},
+      {id:4,name:"Sándwich",cost:50,emoji:"🥪"},
+      {id:5,name:"Alfajor",cost:18,emoji:"🍫"},
+      {id:6,name:"Jugo Natural",cost:25,emoji:"🧃"},
+    ],
+    fotocopiadoras:[
+      {id:7,name:"10 fotocopias B/N",cost:12,emoji:"📄"},
+      {id:8,name:"20 fotocopias B/N",cost:20,emoji:"📋"},
+      {id:9,name:"Impresión color A4",cost:35,emoji:"🖨️"},
+      {id:10,name:"Anillado simple",cost:45,emoji:"📒"},
+    ]
+  },
+  commerces:[
+    {id:1,name:"Máq. Expendedora Central",type:"Expendedora",location:"Edificio A - PB",emoji:"🏪",wallet:"0x1a2b...3c4d",active:true},
+    {id:2,name:"Fotocopiadora Biblioteca",type:"Fotocopiadora",location:"Biblioteca - 1° Piso",emoji:"🖨️",wallet:"0x5e6f...7g8h",active:true},
+    {id:3,name:"Kiosco Campus Norte",type:"Kiosco",location:"Pabellón Norte - Entrada",emoji:"🛒",wallet:"0x9i0j...1k2l",active:true},
+    {id:4,name:"Comedor Universitario",type:"Comedor",location:"Edificio Central - PB",emoji:"🍽️",wallet:"0x3m4n...5o6p",active:true},
+    {id:5,name:"Librería Adherida UTN",type:"Librería",location:"Edificio B - PB",emoji:"📚",wallet:"0x7q8r...9s0t",active:false},
+  ]
+};
 
-function setLoginTab(role, el) {
-  loginRole = role;
-  document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
+let state = {
+  screen:'dashboard',
+  tab:'expendedoras',
+  txTab:'recibidas',
+  selectedProduct:null,
+  selectedGrade:null,
+  selectedCommerce:null,
+  payForm:{commerce:'',branch:'',concept:'',amount:''},
+  scanData:null,
+  balance:245
+};
+
+const navItems=[
+  {id:'dashboard',label:'Inicio',svg:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>'},
+  {id:'transactions',label:'Movimientos',svg:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6l4-4 4 4"/><path d="M12 2v13"/><path d="M8 18l4 4 4-4"/><path d="M12 22V9"/></svg>'},
+  {id:'rewards',label:'Canjear',svg:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>'},
+  {id:'commerces',label:'Comercios',svg:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>'},
+  {id:'profile',label:'Perfil',svg:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'},
+];
+
+function navigate(s,extra={}){
+  state.screen=s;
+  Object.assign(state,extra);
+  render();
 }
 
-function loginAction() {
-  if (loginRole === 'admin') go('admin');
-  else go('dashboard');
+function renderNav(){
+  const mains=['dashboard','transactions','rewards','commerces','profile'];
+  const currentMain=mains.includes(state.screen)?state.screen:
+    state.screen.includes('detail')?'transactions':
+    state.screen.includes('product')||state.screen.includes('redeem')?'rewards':
+    state.screen.includes('pay')||state.screen.includes('qr')?'commerces':
+    state.screen;
+  document.getElementById('bottom-nav').innerHTML=navItems.map(n=>`
+    <div class="nav-item ${currentMain===n.id?'active':''}" onclick="navigate('${n.id}')">
+      <div class="nav-icon">${n.svg}</div>
+      <span class="nav-label">${n.label}</span>
+    </div>`).join('');
 }
 
-function go(screen) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  const target = document.getElementById('screen-' + screen);
-  if (target) {
-    target.classList.add('active');
-    target.scrollTop = 0;
-  }
-  if (screen === 'qr') startQrTimer();
-  else stopQrTimer();
+function screens(){
+  const s=state;
+  if(s.screen==='dashboard') return screenDashboard();
+  if(s.screen==='transactions') return screenTransactions();
+  if(s.screen==='tx-detail') return screenTxDetail();
+  if(s.screen==='grades') return screenGrades();
+  if(s.screen==='grade-detail') return screenGradeDetail();
+  if(s.screen==='wallet') return screenWallet();
+  if(s.screen==='rewards') return screenRewards();
+  if(s.screen==='product-detail') return screenProductDetail();
+  if(s.screen==='redeem-success') return screenRedeemSuccess();
+  if(s.screen==='pay') return screenPay();
+  if(s.screen==='commerces') return screenCommerces();
+  if(s.screen==='qr-scan') return screenQRScan();
+  if(s.screen==='pay-confirm') return screenPayConfirm();
+  if(s.screen==='pay-success') return screenPaySuccess();
+  if(s.screen==='profile') return screenProfile();
+  return screenDashboard();
 }
 
-function startQrTimer() {
-  stopQrTimer();
-  qrSeconds = 300;
-  drawQR();
-  updateTimerDisplay();
-  qrTimer = setInterval(() => {
-    qrSeconds--;
-    updateTimerDisplay();
-    if (qrSeconds <= 0) stopQrTimer();
-  }, 1000);
+function screenDashboard(){
+  return `
+  <div style="padding:20px 20px 0">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <div style="font-size:22px;font-weight:600">¡Hola, ${MOCK.student.name.split(' ')[0]}! 👋</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-top:2px">${MOCK.student.carrera}</div>
+      </div>
+      <div class="avatar" style="width:46px;height:46px">${MOCK.student.avatar}</div>
+    </div>
+    <div class="balance-card" onclick="navigate('wallet')" style="cursor:pointer">
+      <div class="balance-label">Puntos de incentivo</div>
+      <div class="balance-amount">${state.balance} <span class="balance-unit">EduPoints</span></div>
+      <div class="balance-wallet">Wallet: ${MOCK.student.walletId}</div>
+      <div class="balance-status"><div class="dot-pulse"></div> Sincronizado en blockchain</div>
+    </div>
+  </div>
+  <div class="metrics-grid" style="margin-top:16px">
+    <div class="metric-card"><div class="metric-value">40</div><div class="metric-label">Puntos este mes</div></div>
+    <div class="metric-card"><div class="metric-value">5</div><div class="metric-label">Exámenes</div></div>
+    <div class="metric-card"><div class="metric-value">2</div><div class="metric-label">Canjes</div></div>
+  </div>
+  <div class="section-header">
+    <span class="section-title">Actividad reciente</span>
+    <span class="section-link" onclick="navigate('transactions')">Ver todo</span>
+  </div>
+  <div class="card" style="margin:0 20px;padding:0;overflow:hidden">
+    ${MOCK.transactions.slice(0,3).map(t=>`
+    <div class="tx-item" onclick="navigate('tx-detail',{selectedTx:'${t.id}'})">
+      <div class="tx-icon ${t.type}">
+        ${t.type==='income'?
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>':
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>'}
+      </div>
+      <div class="tx-info"><div class="tx-name">${t.name}</div><div class="tx-sub">${t.sub}</div></div>
+      <div class="tx-amount ${t.type}">${t.amount}</div>
+    </div>`).join('')}
+  </div>
+  <div class="section-header"><span class="section-title">Acceso rápido</span></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 20px">
+    <div class="card card-sm" onclick="navigate('rewards',{tab:'expendedoras'})" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+      <div style="font-size:28px">🏪</div>
+      <div><div style="font-size:13px;font-weight:600">Máquinas</div><div style="font-size:11px;color:var(--primary);margin-top:2px">Ver opciones</div></div>
+    </div>
+    <div class="card card-sm" onclick="navigate('rewards',{tab:'fotocopiadoras'})" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+      <div style="font-size:28px">🖨️</div>
+      <div><div style="font-size:13px;font-weight:600">Fotocopiadoras</div><div style="font-size:11px;color:var(--primary);margin-top:2px">Ver descuentos</div></div>
+    </div>
+    <div class="card card-sm" onclick="navigate('grades')" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+      <div style="font-size:28px">📚</div>
+      <div><div style="font-size:13px;font-weight:600">Mis notas</div><div style="font-size:11px;color:var(--primary);margin-top:2px">Ver historial</div></div>
+    </div>
+    <div class="card card-sm" onclick="navigate('qr-scan')" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+      <div style="font-size:28px">📷</div>
+      <div><div style="font-size:13px;font-weight:600">Escanear QR</div><div style="font-size:11px;color:var(--primary);margin-top:2px">Pagar rápido</div></div>
+    </div>
+  </div>
+  <div style="height:20px"></div>`;
 }
 
-function stopQrTimer() {
-  if (qrTimer) { clearInterval(qrTimer); qrTimer = null; }
+function screenTransactions(){
+  const isRecibidas=state.txTab!=='enviadas';
+  const filtered=MOCK.transactions.filter(t=>isRecibidas?t.type==='income':t.type==='expense');
+  return `
+  <div class="header">
+    <div style="flex:1"></div>
+    <div class="header-title">Movimientos</div>
+    <div style="flex:1"></div>
+  </div>
+  <div class="tabs">
+    <div class="tab ${isRecibidas?'active':''}" onclick="state.txTab='recibidas';render()">Recibidas</div>
+    <div class="tab ${!isRecibidas?'active':''}" onclick="state.txTab='enviadas';render()">Enviadas</div>
+  </div>
+  <div class="card" style="margin:0 20px;padding:0;overflow:hidden">
+    ${filtered.length?filtered.map(t=>`
+    <div class="tx-item" onclick="navigate('tx-detail',{selectedTxId:${t.id}})">
+      <div class="tx-icon ${t.type}">
+        ${t.type==='income'?
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>':
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>'}
+      </div>
+      <div class="tx-info"><div class="tx-name">${t.name}</div><div class="tx-sub">${t.sub}</div></div>
+      <div class="tx-amount ${t.type}">${t.amount}</div>
+    </div>`).join(''):`<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:14px">Sin movimientos</div>`}
+  </div>`;
 }
 
-function updateTimerDisplay() {
-  const m = Math.floor(qrSeconds / 60);
-  const s = qrSeconds % 60;
-  const el = document.getElementById('timer-text');
-  if (el) el.textContent = 'Válido por ' + m + ':' + String(s).padStart(2,'0');
+function screenTxDetail(){
+  const tid=state.selectedTxId;
+  const t=MOCK.transactions.find(x=>x.id===tid)||MOCK.transactions[0];
+  const isIncome=t.type==='income';
+  return `
+  <div class="header">
+    <div class="header-back" onclick="navigate('transactions')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Volver
+    </div>
+  </div>
+  <div style="padding:0 20px">
+    <div style="text-align:center;padding:24px 0">
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:6px">${isIncome?'Puntos recibidos':'Puntos gastados'}</div>
+      <div style="font-size:48px;font-weight:700;color:${isIncome?'var(--success)':'var(--error)'}">${t.amount}</div>
+      <div style="font-size:15px;font-weight:500;margin-top:8px">${t.name}</div>
+    </div>
+    <div class="verified" style="margin-bottom:20px">
+      <div class="verified-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div><div class="verified-text">Verificado en Blockchain</div><div class="verified-sub">Bloque #${18432-tid*30}</div></div>
+    </div>
+    <div class="card" style="padding:0 16px">
+      <div class="explorer-row"><span class="explorer-key">Hash</span><span class="explorer-val mono" style="font-size:11px">${t.hash}</span></div>
+      <div class="explorer-row"><span class="explorer-key">Fecha</span><span class="explorer-val">${t.sub}</span></div>
+      <div class="explorer-row"><span class="explorer-key">Emisor</span><span class="explorer-val mono" style="font-size:11px">${isIncome?'0xINSTIT...0001':MOCK.student.walletId}</span></div>
+      <div class="explorer-row"><span class="explorer-key">Receptor</span><span class="explorer-val mono" style="font-size:11px">${isIncome?MOCK.student.walletId:'0xCOMER...autorizado'}</span></div>
+      <div class="explorer-row"><span class="explorer-key">Puntos</span><span class="explorer-val">${t.amount}</span></div>
+      <div class="explorer-row"><span class="explorer-key">Bloque</span><span class="explorer-val mono">${18432-tid*30}</span></div>
+      <div class="explorer-row"><span class="explorer-key">Estado</span><span class="explorer-val"><span class="badge badge-success">✓ Confirmado</span></span></div>
+    </div>
+  </div>`;
 }
 
-function drawQR() {
-  const canvas = document.getElementById('qr-canvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const size = 140;
-  const grid = 14;
-  const cell = size / grid;
-  ctx.clearRect(0,0,size,size);
-  const pattern = [
-    [1,1,1,1,1,1,1,0,1,1,1,1,1,1],
-    [1,0,0,0,0,0,1,0,1,0,0,0,0,1],
-    [1,0,1,1,1,0,1,0,1,0,1,1,0,1],
-    [1,0,1,1,1,0,1,0,0,1,0,1,0,1],
-    [1,0,0,0,0,0,1,1,0,0,1,0,1,1],
-    [1,1,1,1,1,1,1,0,1,1,0,1,0,1],
-    [0,0,0,0,0,0,0,1,0,0,1,0,0,0],
-    [1,0,1,1,0,1,0,0,1,0,1,0,1,1],
-    [0,1,0,0,1,0,1,1,0,1,0,1,0,1],
-    [1,0,1,0,1,1,0,0,1,1,0,1,1,0],
-    [0,1,0,1,0,0,1,1,0,0,1,0,0,1],
-    [1,1,1,1,1,1,1,0,1,0,1,1,0,1],
-    [1,0,0,0,0,0,1,1,0,1,0,0,1,0],
-    [1,1,1,1,1,1,1,0,1,1,0,1,0,1],
+function screenGrades(){
+  return `
+  <div class="header">
+    <div class="header-back" onclick="navigate('dashboard')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Volver
+    </div>
+    <div class="header-title">Mis Notas</div>
+    <div style="width:60px"></div>
+  </div>
+  <div style="padding:0 20px">
+    <div class="gap-10">
+      ${MOCK.grades.map(g=>`
+      <div class="card card-sm" onclick="navigate('grade-detail',{selectedGradeId:${g.id}})" style="cursor:pointer">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <span style="font-size:20px;font-weight:700;color:var(--primary)">${g.grade}</span>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:600">${g.subject}</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${g.type} · ${g.date}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:15px;font-weight:600;color:var(--success)">+${g.points} pts</div>
+            <span class="badge badge-success" style="font-size:10px;margin-top:4px">✓ Blockchain</span>
+          </div>
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function screenGradeDetail(){
+  const g=MOCK.grades.find(x=>x.id===state.selectedGradeId)||MOCK.grades[0];
+  return `
+  <div class="header">
+    <div class="header-back" onclick="navigate('grades')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Notas
+    </div>
+  </div>
+  <div style="padding:0 20px">
+    <div style="text-align:center;padding:20px 0">
+      <div style="width:80px;height:80px;border-radius:20px;background:linear-gradient(135deg,#5B5BF7,#7C3AED);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+        <span style="font-size:36px;font-weight:700;color:white">${g.grade}</span>
+      </div>
+      <div style="font-size:20px;font-weight:700">${g.subject}</div>
+      <div style="font-size:14px;color:var(--text-muted);margin-top:4px">${g.type}</div>
+      <div style="margin-top:12px"><span class="badge badge-primary" style="font-size:13px;padding:6px 16px">+${g.points} EduPoints generados</span></div>
+    </div>
+    <div class="verified" style="margin-bottom:20px">
+      <div class="verified-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div><div class="verified-text">Transacción verificada</div><div class="verified-sub">Bloque #${g.block}</div></div>
+    </div>
+    <div class="card" style="padding:0 16px">
+      <div class="explorer-row"><span class="explorer-key">Hash</span><span class="explorer-val mono" style="font-size:11px">${g.hash}</span></div>
+      <div class="explorer-row"><span class="explorer-key">Fecha</span><span class="explorer-val">${g.date}</span></div>
+      <div class="explorer-row"><span class="explorer-key">Emisor</span><span class="explorer-val" style="font-size:12px">Institución Educativa</span></div>
+      <div class="explorer-row"><span class="explorer-key">Receptor</span><span class="explorer-val mono" style="font-size:11px">${MOCK.student.walletId}</span></div>
+      <div class="explorer-row"><span class="explorer-key">Puntos</span><span class="explorer-val;font-weight:600">+${g.points} EduPoints</span></div>
+      <div class="explorer-row"><span class="explorer-key">Bloque</span><span class="explorer-val mono">#${g.block}</span></div>
+    </div>
+  </div>`;
+}
+
+function screenWallet(){
+  return `
+  <div class="header">
+    <div class="header-back" onclick="navigate('dashboard')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Inicio
+    </div>
+    <div class="header-title">Mi Billetera</div>
+    <div style="width:60px"></div>
+  </div>
+  <div style="padding:0 20px">
+    <div class="balance-card" style="margin-bottom:20px">
+      <div class="balance-label">Saldo disponible</div>
+      <div class="balance-amount">${state.balance} <span class="balance-unit">EduPoints</span></div>
+      <div class="balance-wallet">${MOCK.student.walletId}</div>
+      <div class="balance-status"><div class="dot-pulse"></div> En blockchain</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+      <button class="btn btn-primary" onclick="navigate('pay')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+        Pagar
+      </button>
+      <button class="btn btn-outline" onclick="navigate('qr-scan')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="5" height="5"/><rect x="16" y="3" width="5" height="5"/><rect x="3" y="16" width="5" height="5"/><path d="M21 16h-3v3"/><path d="M15 21v-5h3"/><path d="M15 16h.01"/></svg>
+        Escanear QR
+      </button>
+    </div>
+    <div class="section-title" style="margin-bottom:12px">Historial</div>
+    <div class="card" style="padding:0;overflow:hidden">
+      ${MOCK.transactions.map(t=>`
+      <div class="tx-item" onclick="navigate('tx-detail',{selectedTxId:${t.id}})">
+        <div class="tx-icon ${t.type}">
+          ${t.type==='income'?
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>':
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>'}
+        </div>
+        <div class="tx-info"><div class="tx-name">${t.name}</div><div class="tx-sub">${t.sub}</div></div>
+        <div class="tx-amount ${t.type}">${t.amount}</div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function screenRewards(){
+  const tab=state.tab||'expendedoras';
+  const prods=tab==='expendedoras'?MOCK.products.expendedoras:MOCK.products.fotocopiadoras;
+  return `
+  <div class="header">
+    <div style="flex:1"></div>
+    <div class="header-title">Catálogo</div>
+    <div style="flex:1"></div>
+  </div>
+  <div class="tabs">
+    <div class="tab ${tab==='expendedoras'?'active':''}" onclick="state.tab='expendedoras';render()">Máquinas Expend.</div>
+    <div class="tab ${tab==='fotocopiadoras'?'active':''}" onclick="state.tab='fotocopiadoras';render()">Fotocopiadoras</div>
+  </div>
+  <div style="padding:0 20px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      ${prods.map(p=>`
+      <div class="product-card" onclick="navigate('product-detail',{selectedProductId:${p.id},productTab:'${tab}'})">
+        <div class="product-img">${p.emoji}</div>
+        <div class="product-name">${p.name}</div>
+        <div class="product-cost">${p.cost} puntos</div>
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();navigate('product-detail',{selectedProductId:${p.id},productTab:'${tab}'})">Canjear</button>
+      </div>`).join('')}
+    </div>
+    <div style="background:#EEF2FF;border-radius:12px;padding:14px;margin-top:16px;display:flex;gap:10px;align-items:flex-start">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:3px">¿Cómo funciona?</div>
+        <div style="font-size:12px;color:#4338CA;line-height:1.5">Usás tus EduPoints para obtener productos en comercios adheridos. Cada operación queda registrada en blockchain.</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function screenProductDetail(){
+  const allProds=[...MOCK.products.expendedoras,...MOCK.products.fotocopiadoras];
+  const p=allProds.find(x=>x.id===state.selectedProductId)||allProds[0];
+  const remaining=state.balance-p.cost;
+  const canAfford=remaining>=0;
+  return `
+  <div class="header">
+    <div class="header-back" onclick="navigate('rewards',{tab:state.productTab||'expendedoras'})">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Catálogo
+    </div>
+  </div>
+  <div style="padding:0 20px">
+    <div style="text-align:center;padding:20px 0">
+      <div style="width:120px;height:120px;border-radius:24px;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:60px">${p.emoji}</div>
+      <div style="font-size:14px;color:var(--text-muted)">Vas a canjear</div>
+      <div style="font-size:24px;font-weight:700;margin-top:4px">${p.name}</div>
+      <div style="font-size:28px;font-weight:700;color:var(--primary);margin-top:4px">${p.cost} pts</div>
+    </div>
+    <div class="pay-summary" style="margin-bottom:20px">
+      <div class="pay-row"><span style="font-size:14px;color:var(--text-muted)">Tu saldo actual</span><span style="font-weight:500">${state.balance} pts</span></div>
+      <div class="pay-row"><span style="font-size:14px;color:var(--text-muted)">Costo</span><span style="font-weight:500;color:var(--error)">-${p.cost} pts</span></div>
+      <div class="pay-row total"><span style="font-size:14px;font-weight:600">Saldo restante</span><span class="pay-val">${remaining} pts</span></div>
+    </div>
+    ${!canAfford?`<div style="background:#FFF1F1;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--error);font-weight:500">❌ Saldo insuficiente para este canje</div>`:''}
+    <button class="btn btn-primary" ${!canAfford?'disabled style="opacity:.5;cursor:not-allowed"':''} onclick="${canAfford?`doRedeem(${p.id})`:''}">Confirmar Canje</button>
+    <button class="btn btn-ghost" onclick="navigate('rewards',{tab:state.productTab||'expendedoras'})" style="margin-top:8px">Cancelar</button>
+  </div>`;
+}
+
+function doRedeem(pid){
+  const allProds=[...MOCK.products.expendedoras,...MOCK.products.fotocopiadoras];
+  const p=allProds.find(x=>x.id===pid);
+  state.balance-=p.cost;
+  state.redeemedProduct=p;
+  state.redeemHash='0x'+Math.random().toString(16).slice(2,6)+'...'+Math.random().toString(16).slice(2,6);
+  navigate('redeem-success');
+}
+
+function screenRedeemSuccess(){
+  const p=state.redeemedProduct||{name:'Producto',cost:20,emoji:'🎁'};
+  return `
+  <div class="success-screen">
+    <div class="success-circle">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <div style="font-size:24px;font-weight:700;margin-bottom:8px">¡Canje exitoso!</div>
+    <div style="font-size:14px;color:var(--text-muted);margin-bottom:32px;line-height:1.5;max-width:280px">Tu canje fue registrado en blockchain correctamente</div>
+    <div class="card" style="width:100%;max-width:320px;margin-bottom:24px">
+      <div style="text-align:center;font-size:48px;margin-bottom:12px">${p.emoji}</div>
+      <div style="text-align:center;font-size:18px;font-weight:600;margin-bottom:4px">${p.name}</div>
+      <div style="text-align:center;color:var(--error);font-weight:500;margin-bottom:16px">-${p.cost} EduPoints</div>
+      <div class="hash-box">Hash: ${state.redeemHash}</div>
+      <div style="text-align:center;margin-top:12px"><span class="badge badge-success">✓ Confirmado en Blockchain</span></div>
+    </div>
+    <button class="btn btn-primary" style="max-width:320px;width:100%" onclick="navigate('dashboard')">Volver al inicio</button>
+  </div>`;
+}
+
+function screenPay(){
+  const commerceOptions=MOCK.commerces.filter(c=>c.active).map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  const selected=state.payForm.commerce?MOCK.commerces.find(c=>c.id==state.payForm.commerce):null;
+  const cost=parseInt(state.payForm.amount)||0;
+  const remaining=state.balance-cost;
+  return `
+  <div class="header">
+    <div class="header-back" onclick="navigate('wallet')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Billetera
+    </div>
+    <div class="header-title">Pagar</div>
+    <div style="width:60px"></div>
+  </div>
+  <div style="padding:0 20px">
+    <div class="input-group">
+      <label class="input-label">Comercio adherido</label>
+      <select class="input" onchange="state.payForm.commerce=this.value;render()">
+        <option value="">Seleccionar comercio...</option>
+        ${commerceOptions}
+      </select>
+    </div>
+    ${selected?`
+    <div style="background:#EEF2FF;border-radius:10px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:24px">${selected.emoji}</span>
+      <div><div style="font-size:13px;font-weight:600;color:var(--primary)">${selected.name}</div><div style="font-size:12px;color:var(--text-muted)">${selected.location}</div></div>
+    </div>`:''}
+    <div class="input-group">
+      <label class="input-label">Concepto</label>
+      <input class="input" type="text" placeholder="Ej: Snack, fotocopias..." oninput="state.payForm.concept=this.value" value="${state.payForm.concept||''}">
+    </div>
+    <div class="input-group">
+      <label class="input-label">Cantidad de EduPoints</label>
+      <input class="input" type="number" placeholder="0" min="1" oninput="state.payForm.amount=this.value;render()" value="${state.payForm.amount||''}">
+    </div>
+    ${cost>0?`
+    <div class="pay-summary" style="margin-bottom:20px">
+      <div class="pay-row"><span style="font-size:14px;color:var(--text-muted)">Saldo actual</span><span style="font-weight:500">${state.balance} pts</span></div>
+      <div class="pay-row"><span style="font-size:14px;color:var(--text-muted)">Costo</span><span style="font-weight:500;color:var(--error)">-${cost} pts</span></div>
+      <div class="pay-row total"><span style="font-size:14px;font-weight:600">Saldo restante</span><span class="pay-val" style="color:${remaining>=0?'var(--primary)':'var(--error)'};">${remaining} pts</span></div>
+    </div>`:''}
+    <button class="btn btn-primary" onclick="doDirectPay()" ${!state.payForm.commerce||!cost||remaining<0?'disabled style="opacity:.5;cursor:not-allowed"':''}>Confirmar Pago</button>
+    <button class="btn btn-ghost" onclick="navigate('wallet')" style="margin-top:8px">Cancelar</button>
+  </div>`;
+}
+
+function doDirectPay(){
+  const cost=parseInt(state.payForm.amount)||0;
+  if(cost>state.balance)return;
+  const commerce=MOCK.commerces.find(c=>c.id==state.payForm.commerce);
+  state.balance-=cost;
+  state.payResult={commerce,cost,concept:state.payForm.concept,hash:'0x'+Math.random().toString(16).slice(2,6)+'...'+Math.random().toString(16).slice(2,6)};
+  state.payForm={commerce:'',branch:'',concept:'',amount:''};
+  navigate('pay-success');
+}
+
+function screenCommerces(){
+  return `
+  <div class="header">
+    <div style="flex:1"></div>
+    <div class="header-title">Comercios Adheridos</div>
+    <div style="flex:1"></div>
+  </div>
+  <div style="padding:0 20px">
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Comercios verificados por la institución que aceptan EduPoints</div>
+    <div class="gap-12">
+      ${MOCK.commerces.map(c=>`
+      <div class="commerce-card" style="margin:0;padding:16px;background:var(--card);border-radius:var(--radius);border:1px solid var(--border)">
+        <div class="commerce-header">
+          <div class="commerce-icon">${c.emoji}</div>
+          <div style="flex:1">
+            <div class="commerce-name">${c.name}</div>
+            <div class="commerce-type">${c.type} · ${c.location}</div>
+          </div>
+          <span class="badge ${c.active?'badge-success':'badge-muted'}">${c.active?'● Activo':'○ Inactivo'}</span>
+        </div>
+        <div style="display:flex;gap:8px;border-top:1px solid var(--border);padding-top:12px">
+          ${c.active?`
+          <button class="btn btn-primary btn-sm" onclick="navigate('qr-scan',{preloadCommerce:${c.id}})">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="5" height="5"/><rect x="16" y="3" width="5" height="5"/><rect x="3" y="16" width="5" height="5"/><path d="M21 16h-3v3M15 21v-5h3M15 16h.01"/></svg>
+            Ver QR
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="navigate('pay',{payForm:{commerce:'${c.id}',branch:'',concept:'',amount:''}})">Pagar</button>
+          `:`<span style="font-size:13px;color:var(--text-muted)">Temporalmente inactivo</span>`}
+          <div style="flex:1;text-align:right;font-size:11px;color:var(--text-light);font-family:'DM Mono',monospace">${c.wallet}</div>
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function screenQRScan(){
+  const preloaded=state.preloadCommerce?MOCK.commerces.find(c=>c.id===state.preloadCommerce):null;
+  const mock=preloaded||{name:"Fotocopiadora Biblioteca",type:"Fotocopiadora",emoji:"🖨️",wallet:"0x5e6f...7g8h"};
+  const service=preloaded?{name:"Servicio de fotocopiado",cost:15}:{name:"Impresión 20 hojas",cost:15};
+  const remaining=state.balance-service.cost;
+  return `
+  <div class="header">
+    <div class="header-back" onclick="navigate('commerces')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Comercios
+    </div>
+    <div class="header-title">Escanear QR</div>
+    <div style="width:60px"></div>
+  </div>
+  <div style="padding:0 20px">
+    <div class="qr-container" style="margin-bottom:20px">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;font-weight:500">QR generado por el comercio</div>
+      <div id="qr-visual" style="width:180px;height:180px;margin:0 auto;background:var(--bg);border-radius:12px;display:flex;align-items:center;justify-content:center;border:2px dashed var(--border);font-size:60px">📱</div>
+      <div style="margin-top:12px;font-size:13px;font-weight:500">Apuntá la cámara al código QR</div>
+    </div>
+    <div style="text-align:center;font-size:13px;color:var(--text-muted);margin-bottom:16px">— O cargando QR simulado —</div>
+    <div class="card" style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <div style="font-size:32px">${mock.emoji}</div>
+        <div><div style="font-size:16px;font-weight:600">${mock.name}</div><div style="font-size:12px;color:var(--text-muted)">Wallet verificada: ${mock.wallet}</div></div>
+      </div>
+      <div style="background:var(--bg);border-radius:10px;padding:14px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:13px;color:var(--text-muted)">Servicio</span><span style="font-size:13px;font-weight:500">${service.name}</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="font-size:15px;font-weight:600">Costo</span><span style="font-size:18px;font-weight:700;color:var(--primary)">${service.cost} pts</span></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--border);margin-top:12px">
+        <span style="font-size:13px;color:var(--text-muted)">Tu saldo actual</span>
+        <span style="font-size:13px;font-weight:500">${state.balance} pts</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0">
+        <span style="font-size:13px;font-weight:600">Saldo restante</span>
+        <span style="font-size:14px;font-weight:700;color:var(--primary)">${remaining} pts</span>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="doQRPay(${service.cost},'${mock.name}')">Pagar ${service.cost} EduPoints</button>
+    <button class="btn btn-ghost" onclick="navigate('commerces')" style="margin-top:8px">Cancelar</button>
+  </div>`;
+}
+
+function doQRPay(cost,name){
+  if(cost>state.balance)return;
+  state.balance-=cost;
+  state.payResult={commerce:{name,emoji:'🖨️'},cost,concept:'Pago por QR',hash:'0x'+Math.random().toString(16).slice(2,6)+'...'+Math.random().toString(16).slice(2,6)};
+  navigate('pay-success');
+}
+
+function screenPayConfirm(){
+  return screenPay();
+}
+
+function screenPaySuccess(){
+  const r=state.payResult||{commerce:{name:'Comercio',emoji:'🏪'},cost:20,concept:'Pago',hash:'0xabcd...1234'};
+  return `
+  <div class="success-screen">
+    <div class="success-circle">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <div style="font-size:24px;font-weight:700;margin-bottom:8px">¡Pago exitoso!</div>
+    <div style="font-size:14px;color:var(--text-muted);margin-bottom:32px;line-height:1.5;max-width:280px">La transacción fue registrada en blockchain correctamente</div>
+    <div class="card" style="width:100%;max-width:320px;margin-bottom:24px">
+      <div style="text-align:center;font-size:40px;margin-bottom:8px">${r.commerce.emoji||'🏪'}</div>
+      <div style="text-align:center;font-size:16px;font-weight:600;margin-bottom:4px">${r.commerce.name||r.commerce}</div>
+      <div style="text-align:center;font-size:14px;color:var(--text-muted);margin-bottom:12px">${r.concept}</div>
+      <div style="text-align:center;color:var(--error);font-weight:600;font-size:20px;margin-bottom:16px">-${r.cost} EduPoints</div>
+      <div style="text-align:center;font-size:13px;color:var(--text-muted);margin-bottom:6px">Saldo restante: <strong style="color:var(--primary)">${state.balance} pts</strong></div>
+      <div class="hash-box">Hash: ${r.hash}</div>
+      <div style="text-align:center;margin-top:12px"><span class="badge badge-success">✓ Confirmado en Blockchain</span></div>
+    </div>
+    <button class="btn btn-primary" style="max-width:320px;width:100%" onclick="navigate('dashboard')">Volver al inicio</button>
+  </div>`;
+}
+
+function screenProfile(){
+  const totalEarned=MOCK.grades.reduce((a,g)=>a+g.points,0);
+  const totalSpent=35;
+  const avg=(MOCK.grades.reduce((a,g)=>a+g.grade,0)/MOCK.grades.length).toFixed(1);
+  const achievements=[
+    {emoji:'🎓',name:'Primer examen aprobado',desc:'Registraste tu primera nota en la plataforma'},
+    {emoji:'⭐',name:'100 puntos acumulados',desc:'Acumulaste más de 100 EduPoints'},
+    {emoji:'🛒',name:'Primer canje realizado',desc:'Realizaste tu primer canje exitosamente'},
+    {emoji:'🔗',name:'Wallet verificada',desc:'Tu identidad blockchain fue verificada'},
   ];
-  for (let r=0; r<grid; r++) {
-    for (let c=0; c<grid; c++) {
-      ctx.fillStyle = pattern[r][c] ? '#0F172A' : '#FFFFFF';
-      ctx.fillRect(c*cell+1, r*cell+1, cell-2, cell-2);
-    }
-  }
+  return `
+  <div class="header">
+    <div style="flex:1"></div>
+    <div class="header-title">Mi Perfil</div>
+    <div style="flex:1"></div>
+  </div>
+  <div style="padding:0 20px">
+    <div class="card" style="margin-bottom:16px;text-align:center;padding:28px 20px">
+      <div class="avatar" style="width:72px;height:72px;font-size:28px;margin:0 auto 14px">${MOCK.student.avatar}</div>
+      <div style="font-size:20px;font-weight:700">${MOCK.student.name}</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-top:4px">${MOCK.student.carrera}</div>
+      <div class="mono" style="font-size:11px;color:var(--text-light);margin-top:6px">${MOCK.student.walletId}</div>
+      <span class="badge badge-success" style="margin-top:10px">● Wallet verificada</span>
+    </div>
+    <div class="card" style="margin-bottom:16px;padding:0 16px">
+      <div class="stat-row"><span style="font-size:13px;color:var(--text-muted)">Legajo</span><span style="font-size:13px;font-weight:500">${MOCK.student.legajo}</span></div>
+      <div class="stat-row"><span style="font-size:13px;color:var(--text-muted)">Email</span><span style="font-size:12px;font-weight:500">${MOCK.student.email}</span></div>
+      <div class="stat-row"><span style="font-size:13px;color:var(--text-muted)">Carrera</span><span style="font-size:13px;font-weight:500">${MOCK.student.carrera}</span></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
+      <div class="metric-card"><div class="metric-value" style="font-size:20px">${totalEarned}</div><div class="metric-label">Pts ganados</div></div>
+      <div class="metric-card"><div class="metric-value" style="font-size:20px">${totalSpent}</div><div class="metric-label">Pts gastados</div></div>
+      <div class="metric-card"><div class="metric-value" style="font-size:20px">${avg}</div><div class="metric-label">Promedio</div></div>
+    </div>
+    <div class="section-title" style="margin-bottom:12px">Logros</div>
+    <div class="gap-10">
+      ${achievements.map(a=>`
+      <div class="achievement">
+        <div class="achievement-icon">${a.emoji}</div>
+        <div><div class="achievement-name">${a.name}</div><div class="achievement-desc">${a.desc}</div></div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>`).join('')}
+    </div>
+  </div>`;
 }
+
+function render(){
+  document.getElementById('screen-container').innerHTML=screens();
+  renderNav();
+}
+render();
 </script>
+</body>
+</html>
