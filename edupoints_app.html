@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduPoints</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --primary:#5B5BF7;--primary-dark:#4747d6;--secondary:#7C3AED;
+    --bg:#F8FAFC;--card:#FFFFFF;--success:#22C55E;--error:#EF4444;
+    --text:#0F172A;--text-muted:#64748B;--text-light:#94A3B8;
+    --border:#E2E8F0;--radius:16px;--radius-sm:10px;
+    --shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(91,91,247,.06);
+    --shadow-lg:0 8px 32px rgba(91,91,247,.12);
+  }
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+  .mono{font-family:'DM Mono',monospace}
+  
+  /* App shell */
+  .app{max-width:430px;margin:0 auto;min-height:100vh;background:var(--bg);position:relative;display:flex;flex-direction:column}
+  .screen{flex:1;overflow-y:auto;padding-bottom:80px;animation:fadeIn .2s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+  
+  /* Bottom Nav */
+  .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--card);border-top:1px solid var(--border);display:flex;z-index:100;padding:8px 0 16px}
+  .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:6px 4px;transition:all .15s}
+  .nav-icon{width:24px;height:24px;display:flex;align-items:center;justify-content:center}
+  .nav-label{font-size:10px;font-weight:500;color:var(--text-light);transition:color .15s}
+  .nav-item.active .nav-label{color:var(--primary)}
+  .nav-item.active .nav-icon svg{stroke:var(--primary)}
+  .nav-item .nav-icon svg{stroke:var(--text-light);transition:stroke .15s}
+  
+  /* Header */
+  .header{padding:20px 20px 8px;display:flex;align-items:center;justify-content:space-between}
+  .header-back{display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--primary);font-weight:500;font-size:15px}
+  .header-title{font-size:17px;font-weight:600;text-align:center;flex:1}
+  .header-action{width:32px;height:32px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid var(--border)}
+  
+  /* Cards */
+  .card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:20px;box-shadow:var(--shadow)}
+  .card-sm{padding:14px 16px}
+  
+  /* Balance Card */
+  .balance-card{background:linear-gradient(135deg,#5B5BF7 0%,#7C3AED 100%);border-radius:var(--radius);padding:24px;color:#fff;position:relative;overflow:hidden}
+  .balance-card::before{content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;background:rgba(255,255,255,.07);border-radius:50%}
+  .balance-card::after{content:'';position:absolute;bottom:-60px;left:-20px;width:200px;height:200px;background:rgba(255,255,255,.04);border-radius:50%}
+  .balance-label{font-size:12px;font-weight:500;opacity:.8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+  .balance-amount{font-size:52px;font-weight:600;line-height:1;display:flex;align-items:baseline;gap:8px}
+  .balance-unit{font-size:18px;font-weight:400;opacity:.7}
+  .balance-wallet{font-size:11px;opacity:.6;margin-top:10px;font-family:'DM Mono',monospace}
+  .balance-status{display:inline-flex;align-items:center;gap:5px;margin-top:12px;background:rgba(255,255,255,.15);border-radius:20px;padding:4px 10px;font-size:12px}
+  .dot-pulse{width:6px;height:6px;background:#4ade80;border-radius:50%;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+  
+  /* Metric cards */
+  .metrics-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:0 20px}
+  .metric-card{background:var(--card);border-radius:var(--radius-sm);border:1px solid var(--border);padding:14px 12px;text-align:center}
+  .metric-value{font-size:22px;font-weight:600;color:var(--primary);line-height:1.1}
+  .metric-label{font-size:10px;color:var(--text-muted);margin-top:4px;line-height:1.3}
+  
+  /* Transaction item */
+  .tx-item{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
+  .tx-item:hover{background:#F8FAFC}
+  .tx-item:last-child{border-bottom:none}
+  .tx-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .tx-icon.income{background:#F0FDF4}
+  .tx-icon.expense{background:#FFF1F1}
+  .tx-info{flex:1;min-width:0}
+  .tx-name{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tx-sub{font-size:12px;color:var(--text-muted);margin-top:2px}
+  .tx-amount{font-size:15px;font-weight:600;white-space:nowrap}
+  .tx-amount.income{color:var(--success)}
+  .tx-amount.expense{color:var(--error)}
+  
+  /* Badge */
+  .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:500}
+  .badge-success{background:#F0FDF4;color:#16A34A}
+  .badge-primary{background:#EEF2FF;color:var(--primary)}
+  .badge-muted{background:var(--bg);color:var(--text-muted);border:1px solid var(--border)}
+  .badge-warning{background:#FFFBEB;color:#D97706}
+  
+  /* Button */
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 24px;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:all .15s;border:none;width:100%}
+  .btn-primary{background:var(--primary);color:#fff}
+  .btn-primary:hover{background:var(--primary-dark);transform:translateY(-1px);box-shadow:0 4px 16px rgba(91,91,247,.3)}
+  .btn-primary:active{transform:translateY(0)}
+  .btn-outline{background:transparent;color:var(--primary);border:1.5px solid var(--primary)}
+  .btn-outline:hover{background:#EEF2FF}
+  .btn-ghost{background:transparent;color:var(--text-muted);border:none;font-size:14px}
+  .btn-danger{background:var(--error);color:#fff}
+  .btn-sm{padding:9px 16px;font-size:13px;width:auto;border-radius:8px}
+  
+  /* Section title */
+  .section-header{display:flex;align-items:center;justify-content:space-between;padding:20px 20px 12px}
+  .section-title{font-size:15px;font-weight:600}
+  .section-link{font-size:13px;color:var(--primary);cursor:pointer;font-weight:500}
+  
+  /* Avatar */
+  .avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#5B5BF7,#7C3AED);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:15px;flex-shrink:0}
+  
+  /* Input */
+  .input-group{margin-bottom:16px}
+  .input-label{font-size:13px;font-weight:500;color:var(--text-muted);margin-bottom:6px;display:block}
+  .input{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--border);font-family:'DM Sans',sans-serif;font-size:15px;color:var(--text);background:var(--card);transition:border-color .15s;outline:none}
+  .input:focus{border-color:var(--primary)}
+  select.input{-webkit-appearance:none;cursor:pointer}
+  
+  /* Tabs */
+  .tabs{display:flex;background:var(--bg);border-radius:10px;padding:3px;margin:0 20px 16px}
+  .tab{flex:1;padding:8px;text-align:center;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text-muted);transition:all .15s}
+  .tab.active{background:var(--card);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  
+  /* Blockchain explorer */
+  .hash-box{background:var(--bg);border-radius:8px;padding:10px 12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text-muted);word-break:break-all;border:1px solid var(--border)}
+  .explorer-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+  .explorer-row:last-child{border-bottom:none}
+  .explorer-key{font-size:13px;color:var(--text-muted)}
+  .explorer-val{font-size:13px;font-weight:500;text-align:right;max-width:200px;overflow:hidden;text-overflow:ellipsis}
+  
+  /* Verified badge */
+  .verified{display:flex;align-items:center;gap:10px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;padding:14px 16px}
+  .verified-icon{width:36px;height:36px;background:#22C55E;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .verified-text{font-weight:500;color:#16A34A;font-size:14px}
+  .verified-sub{font-size:12px;color:#4ADE80;margin-top:2px}
+  
+  /* Success screen */
+  .success-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;padding:40px 20px;text-align:center}
+  .success-circle{width:96px;height:96px;background:linear-gradient(135deg,#22C55E,#16A34A);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:24px;box-shadow:0 8px 32px rgba(34,197,94,.25)}
+  
+  /* Product card */
+  .product-card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:16px;display:flex;flex-direction:column;gap:10px;cursor:pointer;transition:all .15s}
+  .product-card:hover{border-color:var(--primary);box-shadow:var(--shadow-lg);transform:translateY(-2px)}
+  .product-img{width:100%;height:80px;border-radius:8px;background:linear-gradient(135deg,#EEF2FF,#F5F3FF);display:flex;align-items:center;justify-content:center;font-size:36px}
+  .product-name{font-size:14px;font-weight:600}
+  .product-cost{font-size:13px;color:var(--primary);font-weight:500}
+  
+  /* Achievement */
+  .achievement{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--bg);border-radius:10px;border:1px solid var(--border)}
+  .achievement-icon{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#FEF3C7,#FDE68A);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+  .achievement-name{font-size:14px;font-weight:500}
+  .achievement-desc{font-size:12px;color:var(--text-muted);margin-top:2px}
+  
+  /* Commerce card */
+  .commerce-card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:18px;margin:0 20px 12px}
+  .commerce-header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .commerce-icon{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);display:flex;align-items:center;justify-content:center;font-size:22px}
+  .commerce-name{font-size:15px;font-weight:600}
+  .commerce-type{font-size:12px;color:var(--text-muted);margin-top:2px}
+  .commerce-detail{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--border)}
+  
+  /* Scroll container */
+  .px-20{padding:0 20px}
+  .gap-10{display:flex;flex-direction:column;gap:10px}
+  .gap-12{display:flex;flex-direction:column;gap:12px}
+  
+  /* QR */
+  .qr-container{background:var(--card);border-radius:var(--radius);padding:24px;text-align:center;border:1px solid var(--border)}
+  .qr-grid{display:grid;grid-template-columns:repeat(10,1fr);gap:3px;width:180px;margin:0 auto}
+  .qr-cell{aspect-ratio:1;border-radius:2px}
+  
+  /* Profile stat */
+  .stat-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
+  .stat-row:last-child{border-bottom:none}
+  
+  /* Confirm pay summary */
+  .pay-summary{background:var(--bg);border-radius:12px;padding:16px}
+  .pay-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0}
+  .pay-row+.pay-row{border-top:1px solid var(--border)}
+  .pay-row.total .pay-val{color:var(--primary);font-weight:600;font-size:17px}
+  
+  /* Animations */
+  .spin{animation:spin 1.5s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  
+  /* Scrollbar */
+  ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="screen" id="screen-container"></div>
+  <nav class="bottom-nav" id="bottom-nav"></nav>
+</div>
+
+<script>
+const MOCK = {
+  student:{name:"Martina López",legajo:"UTN-2024-1234",carrera:"Ing. en Sistemas",email:"martina.lopez@universidad.edu.ar",avatar:"ML",balance:245,walletId:"0x7f3A...9c2B"},
+  grades:[
+    {id:1,subject:"Matemática I",type:"Examen Parcial",date:"20/05/24",grade:8,points:8,hash:"0xab12...f4e9",block:18432},
+    {id:2,subject:"Física II",type:"Trabajo Práctico",date:"15/05/24",grade:9,points:9,hash:"0xcd34...a1b2",block:18401},
+    {id:3,subject:"Química",type:"Examen Final",date:"10/05/24",grade:7,points:7,hash:"0xef56...c3d4",block:18375},
+    {id:4,subject:"Economía",type:"Trabajo Práctico",date:"05/05/24",grade:6,points:6,hash:"0x1234...e5f6",block:18340},
+    {id:5,subject:"Programación",type:"Examen Parcial",date:"02/05/24",grade:10,points:10,hash:"0x5678...g7h8",block:18310},
+  ],
+  transactions:[
+    {id:1,type:"income",name:"Matemática I - Examen",sub:"20/05/24",amount:"+8 pts",hash:"0xab12...f4e9"},
+    {id:2,type:"income",name:"Física II - TP",sub:"15/05/24",amount:"+9 pts",hash:"0xcd34...a1b2"},
+    {id:3,type:"expense",name:"Snack – Máq. #12",sub:"14/05/24",amount:"-20 pts",hash:"0xdc98...z2y1"},
+    {id:4,type:"income",name:"Química - Examen",sub:"10/05/24",amount:"+7 pts",hash:"0xef56...c3d4"},
+    {id:5,type:"expense",name:"Fotocopia – Biblioteca",sub:"08/05/24",amount:"-15 pts",hash:"0xaa11...bb22"},
+    {id:6,type:"income",name:"Economía - TP",sub:"05/05/24",amount:"+6 pts",hash:"0x1234...e5f6"},
+  ],
+  products:{
+    expendedoras:[
+      {id:1,name:"Snack Clásico",cost:20,emoji:"🍟"},
+      {id:2,name:"Agua Mineral",cost:15,emoji:"💧"},
+      {id:3,name:"Gaseosa",cost:30,emoji:"🥤"},
+      {id:4,name:"Sándwich",cost:50,emoji:"🥪"},
+      {id:5,name:"Alfajor",cost:18,emoji:"🍫"},
+      {id:6,name:"Jugo Natural",cost:25,emoji:"🧃"},
+    ],
+    fotocopiadoras:[
+      {id:7,name:"10 fotocopias B/N",cost:12,emoji:"📄"},
+      {id:8,name:"20 fotocopias B/N",cost:20,emoji:"📋"},
+      {id:9,name:"Impresión color A4",cost:35,emoji:"🖨️"},
+      {id:10,name:"Anillado simple",cost:45,emoji:"📒"},
+    ]
+  },
+  commerces:[
+    {id:1,name:"Máq. Expendedora Central",type:"Expendedora",location:"Edificio A - PB",emoji:"🏪",wallet:"0x1a2b...3c4d",active:true},
+    {id:2,name:"Fotocopiadora Biblioteca",type:"Fotocopiadora",location:"Biblioteca - 1° Piso",emoji:"🖨️",wallet:"0x5e6f...7g8h",active:true},
+    {id:3,name:"Kiosco Campus Norte",type:"Kiosco",location:"Pabellón Norte - Entrada",emoji:"🛒",wallet:"0x9i0j...1k2l",active:true},
+    {id:4,name:"Comedor Universitario",type:"Comedor",location:"Edificio Central - PB",emoji:"🍽️",wallet:"0x3m4n...5o6p",active:true},
+    {id:5,name:"Librería Adherida UTN",type:"Librería",location:"Edificio B - PB",emoji:"📚",wallet:"0x7q8r...9s0t",active:false},
+  ]
+};
+
+let state = {
+  screen:'dashboard',
+  tab:'expendedoras',
+  txTab:'recibidas',
+  selectedProduct:null,
+  selectedGrade:null,
+  selectedCommerce:null,
+  payForm:{commerce:'',branch:'',concept:'',amount:''},
+  scanData:null,
+  balance:245
+};
+
+const navItems=[
+  {id:'dashboard',label:'Inicio',svg:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>'},
+  {id:'transactions',label:'Movimientos',svg:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6l4-4 4 4"/><path d="M12 2v13"/><path d="M8 18l4 4 4-4"/><path d="M12 22V9"/></svg>'},
+  {id:'rewards',label:'Canjear',svg:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>'},
+  {id:'commerces',label:'Comercios',svg:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>'},
+  {id:'profile',label:'Perfil',svg:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'},
+];
+
+function navigate(s,extra={}){
+  state.screen=s;
+  Object.assign(state,extra);
+  render();
+}
+
+function renderNav(){
+  const mains=['dashboard','transactions','rewards','commerces','profile'];
+  const currentMain=mains.includes(state.screen)?state.screen:
+    state.screen.includes('detail')?'transactions':
+    state.screen.includes('product')||state.screen.includes('redeem')?'rewards':
+    state.screen.includes('pay')||state.screen.includes('qr')?'commerces':
+    state.screen;
+  document.getElementById('bottom-nav').innerHTML=navItems.map(n=>`
+    <div class="nav-item ${currentMain===n.id?'active':''}" onclick="navigate('${n.id}')">
+      <div class="nav-icon">${n.svg}</div>
+      <span class="nav-label">${n.label}</span>
+    </div>`).join('');
+}
+
+function screens(){
+  const s=state;
+  if(s.screen==='dashboard') return screenDashboard();
+  if(s.screen==='transactions') return screenTransactions();
+  if(s.screen==='tx-detail') return screenTxDetail();
+  if(s.screen==='grades') return screenGrades();
+  if(s.screen==='grade-detail') return screenGradeDetail();
+  if(s.screen==='wallet') return screenWallet();
+  if(s.screen==='rewards') return screenRewards();
+  if(s.screen==='product-detail') return screenProductDetail();
+  if(s.screen==='redeem-success') return screenRedeemSuccess();
+  if(s.screen==='pay') return screenPay();
+  if(s.screen==='commerces') return screenCommerces();
+  if(s.screen==='qr-scan') return screenQRScan();
+  if(s.screen==='pay-confirm') return screenPayConfirm();
+  if(s.screen==='pay-success') return screenPaySuccess();
+  if(s.screen==='profile') return screenProfile();
+  return screenDashboard();
+}
+
+function screenDashboard(){
+  return `
+  <div style="padding:20px 20px 0">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <div style="font-size:22px;font-weight:600">¡Hola, ${MOCK.student.name.split(' ')[0]}! 👋</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-top:2px">${MOCK.student.carrera}</div>
+      </div>
+      <div class="avatar" style="width:46px;height:46px">${MOCK.student.avatar}</div>
+    </div>
+    <div class="balance-card" onclick="navigate('wallet')" style="cursor:pointer">
+      <div class="balance-label">Puntos de incentivo</div>
+      <div class="balance-amount">${state.balance} <span class="balance-unit">EduPoints</span></div>
+      <div class="balance-wallet">Wallet: ${MOCK.student.walletId}</div>
+      <div class="balance-status"><div class="dot-pulse"></div> Sincronizado en blockchain</div>
+    </div>
+  </div>
+  <div class="metrics-grid" style="margin-top:16px">
+    <div class="metric-card"><div class="metric-value">40</div><div class="metric-label">Puntos este mes</div></div>
+    <div class="metric-card"><div class="metric-value">5</div><div class="metric-label">Exámenes</div></div>
+    <div class="metric-card"><div class="metric-value">2</div><div class="metric-label">Canjes</div></div>
+  </div>
+  <div class="section-header">
+    <span class="section-title">Actividad reciente</span>
+    <span class="section-link" onclick="navigate('transactions')">Ver todo</span>
+  </div>
+  <div class="card" style="margin:0 20px;padding:0;overflow:hidden">
+    ${MOCK.transactions.slice(0,3).map(t=>`
+    <div class="tx-item" onclick="navigate('tx-detail',{selectedTx:'${t.id}'})">
+      <div class="tx-icon ${t.type}">
+        ${t.type==='income'?
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>':
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>'}
+      </div>
+      <div class="tx-info"><div class="tx-name">${t.name}</div><div class="tx-sub">${t.sub}</div></div>
+      <div class="tx-amount ${t.type}">${t.amount}</div>
+    </div>`).join('')}
+  </div>
+  <div class="section-header"><span class="section-title">Acceso rápido</span></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 20px">
+    <div class="card card-sm" onclick="navigate('rewards',{tab:'expendedoras'})" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+      <div style="font-size:28px">🏪</div>
+      <div><div style="font-size:13px;font-weight:600">Máquinas</div><div style="font-size:11px;color:var(--primary);margin-top:2px">Ver opciones</div></div>
+    </div>
+    <div class="card card-sm" onclick="navigate('rewards',{tab:'fotocopiadoras'})" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+      <div style="font-size:28px">🖨️</div>
+      <div><div style="font-size:13px;font-weight:600">Fotocopiadoras</div><div style="font-size:11px;color:var(--primary);margin-top:2px">Ver descuentos</div></div>
+    </div>
+    <div class="card card-sm" onclick="navigate('grades')" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+      <div style="font-size:28px">📚</div>
+      <div><div style="font-size:13px;font-weight:600">Mis notas</div><div style="font-size:11px;color:var(--primary);margin-top:2px">Ver historial</div></div>
+    </div>
+    <div class="card card-sm" onclick="navigate('qr-scan')" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+      <div style="font-size:28px">📷</div>
+      <div><div style="font-size:13px;font-weight:600">Escanear QR</div><div style="font-size:11px;color:var(--primary);margin-top:2px">Pagar rápido</div></div>
+    </div>
+  </div>
+  <div style="height:20px"></div>`;
+}
+
+function screenTransactions(){
+  const isRecibidas=state.txTab!=='enviadas';
+  const filtered=MOCK.transactions.filter(t=>isRecibidas?t.type==='income':t.type==='expense');
+  return `
+  <div class="header">
+    <div style="flex:1"></div>
+    <div class="header-title">Movimientos</div>
+    <div style="flex:1"></div>
+  </div>
+  <div class="tabs">
+    <div class="tab ${isRecibidas?'active':''}" onclick="state.txTab='recibidas';render()">Recibidas</div>
+    <div class="tab ${!isRecibidas?'active':''}" onclick="state.txTab='enviadas';render()">Enviadas</div>
+  </div>
+  <div class="card" style="margin:0 20px;padding:0;overflow:hidden">
+    ${filtered.length?filtered.map(t=>`
+    <div class="tx-item" onclick="navigate('tx-detail',{selectedTxId:${t.id}})">
+      <div class="tx-icon ${t.type}">
+        ${t.type==='income'?
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>':
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>'}
+      </div>
+      <div class="tx-info"><div class="tx-name">${t.name}</div><div class="tx-sub">${t.sub}</div></div>
+      <div class="tx-amount ${t.type}">${t.amount}</div>
+    </div>`).join(''):`<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:14px">Sin movimientos</div>`}
+  </div>`;
+}
+
+function screenTxDetail(){
+  const tid=state.selectedTxId;
+  const t=MOCK.transactions.find(x=>x.id===tid)||MOCK.transactions[0];
+  const isIncome=t.type==='income';
+  return `
+  <div class="header">
+    <div class="header-back" onclick="navigate('transactions')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Volver
+    </div>
+  </div>
+  <div style="padding:0 20px">
+    <div style="text-align:center;padding:24px 0">
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:6px">${isIncome?'Puntos recibidos':'Puntos gastados'}</div>
+      <div style="font-size:48px;font-weight:700;color:${isIncome?'var(--success)':'var(--error)'}">${t.amount}</div>
+      <div style="font-size:15px;font-weight:500;margin-top:8px">${t.name}</div>
+    </div>
+    <div class="verified" style="margin-bottom:20px">
+      <div class="verified-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div><div class="verified-text">Verificado en Blockchain</div><div class="verified-sub">Bloque #${18432-tid*30}</div></div>
+    </div>
+    <div class="card" style="padding:0 16px">
+      <div class="explorer-row"><span class="explorer-key">Hash</span><span class="explorer-val mono" style="font-size:11px">${t.hash}</span></div>
+      <div class="explorer-row"><span class="explorer-key">Fecha</span><span class="explorer-val">${t.sub}</span></div>
+      <div class="explorer-row"><span class="explorer-key">Emisor</span><span class="explorer-val mono" style="font-size:11px">${isIncome?'0xINSTIT...0001':MOCK.student.walletId}</span></div>
+      <div class="explorer-row"><span class="explorer-key">Receptor</span><span class="explorer-val mono" style="font-size:11px">${isIncome?MOCK.student.walletId:'0xCOMER...autorizado'}</span></div>
+      <div class="explorer-row"><span class="explorer-key">Puntos</span><span class="explorer-val">${t.amount}</span></div>
+      <div class="explorer-row"><span class="explorer-key">Bloque</span><span class="explorer-val mono">${18432-tid*30}</span></div>
+      <div class="explorer-row"><span class="explorer-key">Estado</span><span class="explorer-val"><span class="badge badge-success">✓ Confirmado</span></span></div>
+    </div>
+  </div>`;
+}
+
+function screenGrades(){
+  return `
+  <div class="header">
+    <div class="header-back" onclick="navigate('dashboard')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Volver
+    </div>
+    <div class="header-title">Mis Notas</div>
+    <div style="width:60px"></div>
+  </div>
+  <div style="padding:0 20px">
+    <div class="gap-10">
+      ${MOCK.grades.map(g=>`
+      <div class="card card-sm" onclick="navigate('grade-detail',{selectedGradeId:${g.id}})" style="cursor:pointer">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <span style="font-size:20px;font-weight:700;color:var(--primary)">${g.grade}</span>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:600">${g.subject}</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${g.type} · ${g.date}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:15px;font-weight:600;color:var(--success)">+${g.points} pts</div>
+            <span class="badge badge-success" style="font-size:10px;margin-top:4px">✓ Blockchain</span>
+          </div>
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function screenGradeDetail(){
+  const g=MOCK.grades.find(x=>x.id===state.selectedGradeId)||MOCK.grades[0];
+  return `
+  <div class="header">
+    <div class="header-back" onclick="navigate('grades')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Notas
+    </div>
+  </div>
+  <div style="padding:0 20px">
+    <div style="text-align:center;padding:20px 0">
+      <div style="width:80px;height:80px;border-radius:20px;background:linear-gradient(135deg,#5B5BF7,#7C3AED);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+        <span style="font-size:36px;font-weight:700;color:white">${g.grade}</span>
+      </div>
+      <div style="font-size:20px;font-weight:700">${g.subject}</div>
+      <div style="font-size:14px;color:var(--text-muted);margin-top:4px">${g.type}</div>
+      <div style="margin-top:12px"><span class="badge badge-primary" style="font-size:13px;padding:6px 16px">+${g.points} EduPoints generados</span></div>
+    </div>
+    <div class="verified" style="margin-bottom:20px">
+      <div class="verified-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div><div class="verified-text">Transacción verificada</div><div class="verified-sub">Bloque #${g.block}</div></div>
+    </div>
+    <div class="card" style="padding:0 16px">
+      <div class="explorer-row"><span class="explorer-key">Hash</span><span class="explorer-val mono" style="font-size:11px">${g.hash}</span></div>
+      <div class="explorer-row"><span class="explorer-key">Fecha</span><span class="explorer-val">${g.date}</span></div>
+      <div class="explorer-row"><span class="explorer-key">Emisor</span><span class="explorer-val" style="font-size:12px">Institución Educativa</span></div>
+      <div class="explorer-row"><span class="explorer-key">Receptor</span><span class="explorer-val mono" style="font-size:11px">${MOCK.student.walletId}</span></div>
+      <div class="explorer-row"><span class="explorer-key">Puntos</span><span class="explorer-val;font-weight:600">+${g.points} EduPoints</span></div>
+      <div class="explorer-row"><span class="explorer-key">Bloque</span><span class="explorer-val mono">#${g.block}</span></div>
+    </div>
+  </div>`;
+}
+
+function screenWallet(){
+  return `
+  <div class="header">
+    <div class="header-back" onclick="navigate('dashboard')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Inicio
+    </div>
+    <div class="header-title">Mi Billetera</div>
+    <div style="width:60px"></div>
+  </div>
+  <div style="padding:0 20px">
+    <div class="balance-card" style="margin-bottom:20px">
+      <div class="balance-label">Saldo disponible</div>
+      <div class="balance-amount">${state.balance} <span class="balance-unit">EduPoints</span></div>
+      <div class="balance-wallet">${MOCK.student.walletId}</div>
+      <div class="balance-status"><div class="dot-pulse"></div> En blockchain</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+      <button class="btn btn-primary" onclick="navigate('pay')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+        Pagar
+      </button>
+      <button class="btn btn-outline" onclick="navigate('qr-scan')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="5" height="5"/><rect x="16" y="3" width="5" height="5"/><rect x="3" y="16" width="5" height="5"/><path d="M21 16h-3v3"/><path d="M15 21v-5h3"/><path d="M15 16h.01"/></svg>
+        Escanear QR
+      </button>
+    </div>
+    <div class="section-title" style="margin-bottom:12px">Historial</div>
+    <div class="card" style="padding:0;overflow:hidden">
+      ${MOCK.transactions.map(t=>`
+      <div class="tx-item" onclick="navigate('tx-detail',{selectedTxId:${t.id}})">
+        <div class="tx-icon ${t.type}">
+          ${t.type==='income'?
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>':
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>'}
+        </div>
+        <div class="tx-info"><div class="tx-name">${t.name}</div><div class="tx-sub">${t.sub}</div></div>
+        <div class="tx-amount ${t.type}">${t.amount}</div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function screenRewards(){
+  const tab=state.tab||'expendedoras';
+  const prods=tab==='expendedoras'?MOCK.products.expendedoras:MOCK.products.fotocopiadoras;
+  return `
+  <div class="header">
+    <div style="flex:1"></div>
+    <div class="header-title">Catálogo</div>
+    <div style="flex:1"></div>
+  </div>
+  <div class="tabs">
+    <div class="tab ${tab==='expendedoras'?'active':''}" onclick="state.tab='expendedoras';render()">Máquinas Expend.</div>
+    <div class="tab ${tab==='fotocopiadoras'?'active':''}" onclick="state.tab='fotocopiadoras';render()">Fotocopiadoras</div>
+  </div>
+  <div style="padding:0 20px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      ${prods.map(p=>`
+      <div class="product-card" onclick="navigate('product-detail',{selectedProductId:${p.id},productTab:'${tab}'})">
+        <div class="product-img">${p.emoji}</div>
+        <div class="product-name">${p.name}</div>
+        <div class="product-cost">${p.cost} puntos</div>
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();navigate('product-detail',{selectedProductId:${p.id},productTab:'${tab}'})">Canjear</button>
+      </div>`).join('')}
+    </div>
+    <div style="background:#EEF2FF;border-radius:12px;padding:14px;margin-top:16px;display:flex;gap:10px;align-items:flex-start">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:3px">¿Cómo funciona?</div>
+        <div style="font-size:12px;color:#4338CA;line-height:1.5">Usás tus EduPoints para obtener productos en comercios adheridos. Cada operación queda registrada en blockchain.</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function screenProductDetail(){
+  const allProds=[...MOCK.products.expendedoras,...MOCK.products.fotocopiadoras];
+  const p=allProds.find(x=>x.id===state.selectedProductId)||allProds[0];
+  const remaining=state.balance-p.cost;
+  const canAfford=remaining>=0;
+  return `
+  <div class="header">
+    <div class="header-back" onclick="navigate('rewards',{tab:state.productTab||'expendedoras'})">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Catálogo
+    </div>
+  </div>
+  <div style="padding:0 20px">
+    <div style="text-align:center;padding:20px 0">
+      <div style="width:120px;height:120px;border-radius:24px;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:60px">${p.emoji}</div>
+      <div style="font-size:14px;color:var(--text-muted)">Vas a canjear</div>
+      <div style="font-size:24px;font-weight:700;margin-top:4px">${p.name}</div>
+      <div style="font-size:28px;font-weight:700;color:var(--primary);margin-top:4px">${p.cost} pts</div>
+    </div>
+    <div class="pay-summary" style="margin-bottom:20px">
+      <div class="pay-row"><span style="font-size:14px;color:var(--text-muted)">Tu saldo actual</span><span style="font-weight:500">${state.balance} pts</span></div>
+      <div class="pay-row"><span style="font-size:14px;color:var(--text-muted)">Costo</span><span style="font-weight:500;color:var(--error)">-${p.cost} pts</span></div>
+      <div class="pay-row total"><span style="font-size:14px;font-weight:600">Saldo restante</span><span class="pay-val">${remaining} pts</span></div>
+    </div>
+    ${!canAfford?`<div style="background:#FFF1F1;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--error);font-weight:500">❌ Saldo insuficiente para este canje</div>`:''}
+    <button class="btn btn-primary" ${!canAfford?'disabled style="opacity:.5;cursor:not-allowed"':''} onclick="${canAfford?`doRedeem(${p.id})`:''}">Confirmar Canje</button>
+    <button class="btn btn-ghost" onclick="navigate('rewards',{tab:state.productTab||'expendedoras'})" style="margin-top:8px">Cancelar</button>
+  </div>`;
+}
+
+function doRedeem(pid){
+  const allProds=[...MOCK.products.expendedoras,...MOCK.products.fotocopiadoras];
+  const p=allProds.find(x=>x.id===pid);
+  state.balance-=p.cost;
+  state.redeemedProduct=p;
+  state.redeemHash='0x'+Math.random().toString(16).slice(2,6)+'...'+Math.random().toString(16).slice(2,6);
+  navigate('redeem-success');
+}
+
+function screenRedeemSuccess(){
+  const p=state.redeemedProduct||{name:'Producto',cost:20,emoji:'🎁'};
+  return `
+  <div class="success-screen">
+    <div class="success-circle">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <div style="font-size:24px;font-weight:700;margin-bottom:8px">¡Canje exitoso!</div>
+    <div style="font-size:14px;color:var(--text-muted);margin-bottom:32px;line-height:1.5;max-width:280px">Tu canje fue registrado en blockchain correctamente</div>
+    <div class="card" style="width:100%;max-width:320px;margin-bottom:24px">
+      <div style="text-align:center;font-size:48px;margin-bottom:12px">${p.emoji}</div>
+      <div style="text-align:center;font-size:18px;font-weight:600;margin-bottom:4px">${p.name}</div>
+      <div style="text-align:center;color:var(--error);font-weight:500;margin-bottom:16px">-${p.cost} EduPoints</div>
+      <div class="hash-box">Hash: ${state.redeemHash}</div>
+      <div style="text-align:center;margin-top:12px"><span class="badge badge-success">✓ Confirmado en Blockchain</span></div>
+    </div>
+    <button class="btn btn-primary" style="max-width:320px;width:100%" onclick="navigate('dashboard')">Volver al inicio</button>
+  </div>`;
+}
+
+function screenPay(){
+  const commerceOptions=MOCK.commerces.filter(c=>c.active).map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  const selected=state.payForm.commerce?MOCK.commerces.find(c=>c.id==state.payForm.commerce):null;
+  const cost=parseInt(state.payForm.amount)||0;
+  const remaining=state.balance-cost;
+  return `
+  <div class="header">
+    <div class="header-back" onclick="navigate('wallet')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Billetera
+    </div>
+    <div class="header-title">Pagar</div>
+    <div style="width:60px"></div>
+  </div>
+  <div style="padding:0 20px">
+    <div class="input-group">
+      <label class="input-label">Comercio adherido</label>
+      <select class="input" onchange="state.payForm.commerce=this.value;render()">
+        <option value="">Seleccionar comercio...</option>
+        ${commerceOptions}
+      </select>
+    </div>
+    ${selected?`
+    <div style="background:#EEF2FF;border-radius:10px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:24px">${selected.emoji}</span>
+      <div><div style="font-size:13px;font-weight:600;color:var(--primary)">${selected.name}</div><div style="font-size:12px;color:var(--text-muted)">${selected.location}</div></div>
+    </div>`:''}
+    <div class="input-group">
+      <label class="input-label">Concepto</label>
+      <input class="input" type="text" placeholder="Ej: Snack, fotocopias..." oninput="state.payForm.concept=this.value" value="${state.payForm.concept||''}">
+    </div>
+    <div class="input-group">
+      <label class="input-label">Cantidad de EduPoints</label>
+      <input class="input" type="number" placeholder="0" min="1" oninput="state.payForm.amount=this.value;render()" value="${state.payForm.amount||''}">
+    </div>
+    ${cost>0?`
+    <div class="pay-summary" style="margin-bottom:20px">
+      <div class="pay-row"><span style="font-size:14px;color:var(--text-muted)">Saldo actual</span><span style="font-weight:500">${state.balance} pts</span></div>
+      <div class="pay-row"><span style="font-size:14px;color:var(--text-muted)">Costo</span><span style="font-weight:500;color:var(--error)">-${cost} pts</span></div>
+      <div class="pay-row total"><span style="font-size:14px;font-weight:600">Saldo restante</span><span class="pay-val" style="color:${remaining>=0?'var(--primary)':'var(--error)'};">${remaining} pts</span></div>
+    </div>`:''}
+    <button class="btn btn-primary" onclick="doDirectPay()" ${!state.payForm.commerce||!cost||remaining<0?'disabled style="opacity:.5;cursor:not-allowed"':''}>Confirmar Pago</button>
+    <button class="btn btn-ghost" onclick="navigate('wallet')" style="margin-top:8px">Cancelar</button>
+  </div>`;
+}
+
+function doDirectPay(){
+  const cost=parseInt(state.payForm.amount)||0;
+  if(cost>state.balance)return;
+  const commerce=MOCK.commerces.find(c=>c.id==state.payForm.commerce);
+  state.balance-=cost;
+  state.payResult={commerce,cost,concept:state.payForm.concept,hash:'0x'+Math.random().toString(16).slice(2,6)+'...'+Math.random().toString(16).slice(2,6)};
+  state.payForm={commerce:'',branch:'',concept:'',amount:''};
+  navigate('pay-success');
+}
+
+function screenCommerces(){
+  return `
+  <div class="header">
+    <div style="flex:1"></div>
+    <div class="header-title">Comercios Adheridos</div>
+    <div style="flex:1"></div>
+  </div>
+  <div style="padding:0 20px">
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Comercios verificados por la institución que aceptan EduPoints</div>
+    <div class="gap-12">
+      ${MOCK.commerces.map(c=>`
+      <div class="commerce-card" style="margin:0;padding:16px;background:var(--card);border-radius:var(--radius);border:1px solid var(--border)">
+        <div class="commerce-header">
+          <div class="commerce-icon">${c.emoji}</div>
+          <div style="flex:1">
+            <div class="commerce-name">${c.name}</div>
+            <div class="commerce-type">${c.type} · ${c.location}</div>
+          </div>
+          <span class="badge ${c.active?'badge-success':'badge-muted'}">${c.active?'● Activo':'○ Inactivo'}</span>
+        </div>
+        <div style="display:flex;gap:8px;border-top:1px solid var(--border);padding-top:12px">
+          ${c.active?`
+          <button class="btn btn-primary btn-sm" onclick="navigate('qr-scan',{preloadCommerce:${c.id}})">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="5" height="5"/><rect x="16" y="3" width="5" height="5"/><rect x="3" y="16" width="5" height="5"/><path d="M21 16h-3v3M15 21v-5h3M15 16h.01"/></svg>
+            Ver QR
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="navigate('pay',{payForm:{commerce:'${c.id}',branch:'',concept:'',amount:''}})">Pagar</button>
+          `:`<span style="font-size:13px;color:var(--text-muted)">Temporalmente inactivo</span>`}
+          <div style="flex:1;text-align:right;font-size:11px;color:var(--text-light);font-family:'DM Mono',monospace">${c.wallet}</div>
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function screenQRScan(){
+  const preloaded=state.preloadCommerce?MOCK.commerces.find(c=>c.id===state.preloadCommerce):null;
+  const mock=preloaded||{name:"Fotocopiadora Biblioteca",type:"Fotocopiadora",emoji:"🖨️",wallet:"0x5e6f...7g8h"};
+  const service=preloaded?{name:"Servicio de fotocopiado",cost:15}:{name:"Impresión 20 hojas",cost:15};
+  const remaining=state.balance-service.cost;
+  return `
+  <div class="header">
+    <div class="header-back" onclick="navigate('commerces')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Comercios
+    </div>
+    <div class="header-title">Escanear QR</div>
+    <div style="width:60px"></div>
+  </div>
+  <div style="padding:0 20px">
+    <div class="qr-container" style="margin-bottom:20px">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;font-weight:500">QR generado por el comercio</div>
+      <div id="qr-visual" style="width:180px;height:180px;margin:0 auto;background:var(--bg);border-radius:12px;display:flex;align-items:center;justify-content:center;border:2px dashed var(--border);font-size:60px">📱</div>
+      <div style="margin-top:12px;font-size:13px;font-weight:500">Apuntá la cámara al código QR</div>
+    </div>
+    <div style="text-align:center;font-size:13px;color:var(--text-muted);margin-bottom:16px">— O cargando QR simulado —</div>
+    <div class="card" style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <div style="font-size:32px">${mock.emoji}</div>
+        <div><div style="font-size:16px;font-weight:600">${mock.name}</div><div style="font-size:12px;color:var(--text-muted)">Wallet verificada: ${mock.wallet}</div></div>
+      </div>
+      <div style="background:var(--bg);border-radius:10px;padding:14px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:13px;color:var(--text-muted)">Servicio</span><span style="font-size:13px;font-weight:500">${service.name}</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="font-size:15px;font-weight:600">Costo</span><span style="font-size:18px;font-weight:700;color:var(--primary)">${service.cost} pts</span></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--border);margin-top:12px">
+        <span style="font-size:13px;color:var(--text-muted)">Tu saldo actual</span>
+        <span style="font-size:13px;font-weight:500">${state.balance} pts</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0">
+        <span style="font-size:13px;font-weight:600">Saldo restante</span>
+        <span style="font-size:14px;font-weight:700;color:var(--primary)">${remaining} pts</span>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="doQRPay(${service.cost},'${mock.name}')">Pagar ${service.cost} EduPoints</button>
+    <button class="btn btn-ghost" onclick="navigate('commerces')" style="margin-top:8px">Cancelar</button>
+  </div>`;
+}
+
+function doQRPay(cost,name){
+  if(cost>state.balance)return;
+  state.balance-=cost;
+  state.payResult={commerce:{name,emoji:'🖨️'},cost,concept:'Pago por QR',hash:'0x'+Math.random().toString(16).slice(2,6)+'...'+Math.random().toString(16).slice(2,6)};
+  navigate('pay-success');
+}
+
+function screenPayConfirm(){
+  return screenPay();
+}
+
+function screenPaySuccess(){
+  const r=state.payResult||{commerce:{name:'Comercio',emoji:'🏪'},cost:20,concept:'Pago',hash:'0xabcd...1234'};
+  return `
+  <div class="success-screen">
+    <div class="success-circle">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <div style="font-size:24px;font-weight:700;margin-bottom:8px">¡Pago exitoso!</div>
+    <div style="font-size:14px;color:var(--text-muted);margin-bottom:32px;line-height:1.5;max-width:280px">La transacción fue registrada en blockchain correctamente</div>
+    <div class="card" style="width:100%;max-width:320px;margin-bottom:24px">
+      <div style="text-align:center;font-size:40px;margin-bottom:8px">${r.commerce.emoji||'🏪'}</div>
+      <div style="text-align:center;font-size:16px;font-weight:600;margin-bottom:4px">${r.commerce.name||r.commerce}</div>
+      <div style="text-align:center;font-size:14px;color:var(--text-muted);margin-bottom:12px">${r.concept}</div>
+      <div style="text-align:center;color:var(--error);font-weight:600;font-size:20px;margin-bottom:16px">-${r.cost} EduPoints</div>
+      <div style="text-align:center;font-size:13px;color:var(--text-muted);margin-bottom:6px">Saldo restante: <strong style="color:var(--primary)">${state.balance} pts</strong></div>
+      <div class="hash-box">Hash: ${r.hash}</div>
+      <div style="text-align:center;margin-top:12px"><span class="badge badge-success">✓ Confirmado en Blockchain</span></div>
+    </div>
+    <button class="btn btn-primary" style="max-width:320px;width:100%" onclick="navigate('dashboard')">Volver al inicio</button>
+  </div>`;
+}
+
+function screenProfile(){
+  const totalEarned=MOCK.grades.reduce((a,g)=>a+g.points,0);
+  const totalSpent=35;
+  const avg=(MOCK.grades.reduce((a,g)=>a+g.grade,0)/MOCK.grades.length).toFixed(1);
+  const achievements=[
+    {emoji:'🎓',name:'Primer examen aprobado',desc:'Registraste tu primera nota en la plataforma'},
+    {emoji:'⭐',name:'100 puntos acumulados',desc:'Acumulaste más de 100 EduPoints'},
+    {emoji:'🛒',name:'Primer canje realizado',desc:'Realizaste tu primer canje exitosamente'},
+    {emoji:'🔗',name:'Wallet verificada',desc:'Tu identidad blockchain fue verificada'},
+  ];
+  return `
+  <div class="header">
+    <div style="flex:1"></div>
+    <div class="header-title">Mi Perfil</div>
+    <div style="flex:1"></div>
+  </div>
+  <div style="padding:0 20px">
+    <div class="card" style="margin-bottom:16px;text-align:center;padding:28px 20px">
+      <div class="avatar" style="width:72px;height:72px;font-size:28px;margin:0 auto 14px">${MOCK.student.avatar}</div>
+      <div style="font-size:20px;font-weight:700">${MOCK.student.name}</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-top:4px">${MOCK.student.carrera}</div>
+      <div class="mono" style="font-size:11px;color:var(--text-light);margin-top:6px">${MOCK.student.walletId}</div>
+      <span class="badge badge-success" style="margin-top:10px">● Wallet verificada</span>
+    </div>
+    <div class="card" style="margin-bottom:16px;padding:0 16px">
+      <div class="stat-row"><span style="font-size:13px;color:var(--text-muted)">Legajo</span><span style="font-size:13px;font-weight:500">${MOCK.student.legajo}</span></div>
+      <div class="stat-row"><span style="font-size:13px;color:var(--text-muted)">Email</span><span style="font-size:12px;font-weight:500">${MOCK.student.email}</span></div>
+      <div class="stat-row"><span style="font-size:13px;color:var(--text-muted)">Carrera</span><span style="font-size:13px;font-weight:500">${MOCK.student.carrera}</span></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
+      <div class="metric-card"><div class="metric-value" style="font-size:20px">${totalEarned}</div><div class="metric-label">Pts ganados</div></div>
+      <div class="metric-card"><div class="metric-value" style="font-size:20px">${totalSpent}</div><div class="metric-label">Pts gastados</div></div>
+      <div class="metric-card"><div class="metric-value" style="font-size:20px">${avg}</div><div class="metric-label">Promedio</div></div>
+    </div>
+    <div class="section-title" style="margin-bottom:12px">Logros</div>
+    <div class="gap-10">
+      ${achievements.map(a=>`
+      <div class="achievement">
+        <div class="achievement-icon">${a.emoji}</div>
+        <div><div class="achievement-name">${a.name}</div><div class="achievement-desc">${a.desc}</div></div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function render(){
+  document.getElementById('screen-container').innerHTML=screens();
+  renderNav();
+}
+render();
+</script>
+</body>
+</html>
