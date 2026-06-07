@@ -21,3 +21,19 @@ rad.json
 *.flf
 #Test results file
 TestResults.xml
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+.venv/
+
+# Docker & Database
+db/data/
+postgres_data/
+
+# OS
+.DS_Store
