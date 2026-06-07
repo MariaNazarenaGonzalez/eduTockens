@@ -1,1 +1,100 @@
-<!-- TODO: Build the student homepage layout showing balance, history, and marketplace access. -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - EduTokens</title>
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <div class="header">
+      <div style="font-size: 14px; font-weight: 600; color: var(--primary);">🎓 EduTokens</div>
+      <div style="font-size: 14px; color: var(--text-muted);">Hola, <span id="student-name">Estudiante</span> 👋</div>
+      <button class="header-action" onclick="logout()">⊗</button>
+    </div>
+
+    <!-- Main Content -->
+    <div style="flex: 1; overflow-y: auto; padding: 0 20px; padding-bottom: 80px;">
+      <!-- Balance Card -->
+      <div class="balance-card" style="margin: 20px 0;">
+        <div class="balance-label">Saldo Disponible</div>
+        <div class="balance-amount">
+          <span id="balance-amount">0</span>
+          <span class="balance-unit">pts</span>
+        </div>
+        <div class="balance-status">
+          <div class="dot-pulse"></div>
+          <span>Confirmado en blockchain</span>
+        </div>
+      </div>
+
+      <!-- Metrics -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-value" id="metric-earned">0</div>
+          <div class="metric-label">Ganados</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value" id="metric-spent">0</div>
+          <div class="metric-label">Gastados</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value" id="metric-transactions">0</div>
+          <div class="metric-label">Transacciones</div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0;">
+        <button class="btn btn-outline" style="width: 100%; padding: 14px 8px; margin: 0; flex-direction: column; font-size: 12px; height: auto;" onclick="goTo('marketplace.html')">
+          🛍️ Canjear
+        </button>
+        <button class="btn btn-outline" style="width: 100%; padding: 14px 8px; margin: 0; flex-direction: column; font-size: 12px; height: auto;" onclick="goTo('marketplace.html')">
+          🎁 Ofertas
+        </button>
+        <button class="btn btn-outline" style="width: 100%; padding: 14px 8px; margin: 0; flex-direction: column; font-size: 12px; height: auto;" onclick="loadBalance()">
+          🔄 Actualizar
+        </button>
+      </div>
+
+      <!-- Transactions Section -->
+      <div class="section-header">
+        <div class="section-title">Historial Reciente</div>
+        <button class="section-link" onclick="goTo('#historial')">Ver todo →</button>
+      </div>
+
+      <div class="card" style="padding: 0; margin: 0;">
+        <div id="transactions-list" style="overflow: hidden; border-radius: 16px;">
+          <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 13px;">
+            Cargando transacciones...
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <div class="bottom-nav">
+    <button class="nav-item active" onclick="goTo('home.html')">
+      <div class="nav-icon">🏠</div>
+      <div class="nav-label">Inicio</div>
+    </button>
+    <button class="nav-item" onclick="goTo('#historial')">
+      <div class="nav-icon">📋</div>
+      <div class="nav-label">Historial</div>
+    </button>
+    <button class="nav-item" onclick="goTo('marketplace.html')">
+      <div class="nav-icon">🎁</div>
+      <div class="nav-label">Canjear</div>
+    </button>
+    <button class="nav-item" onclick="goTo('profile.html')">
+      <div class="nav-icon">👤</div>
+      <div class="nav-label">Perfil</div>
+    </button>
+  </div>
+
+  <script src="../js/home.js"></script>
+</body>
+</html>

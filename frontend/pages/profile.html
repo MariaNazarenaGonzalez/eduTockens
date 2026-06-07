@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Perfil - EduTokens</title>
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <div class="header">
+      <button class="header-back" onclick="history.back()">← Atrás</button>
+      <div class="header-title">Mi Perfil</div>
+      <div style="width: 60px;"></div>
+    </div>
+
+    <!-- Main Content -->
+    <div style="flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 80px;">
+      <!-- Avatar and Basic Info -->
+      <div style="text-align: center; margin-bottom: 32px;">
+        <div class="avatar" style="width: 80px; height: 80px; font-size: 32px; margin: 0 auto 16px;" id="profile-avatar">ES</div>
+        <h1 id="profile-name" style="font-size: 20px; font-weight: 600; margin-bottom: 4px;">Nombre del Estudiante</h1>
+        <p id="profile-legajo" class="mono" style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">12345678</p>
+        <p id="profile-email" style="font-size: 13px; color: var(--text-muted);">correo@ejemplo.com</p>
+      </div>
+
+      <!-- Stats -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 32px;">
+        <div style="text-align: center; padding: 16px; background: var(--card); border-radius: 10px; border: 1px solid var(--border);">
+          <div style="font-size: 24px; font-weight: 600; color: var(--success); margin-bottom: 4px;" id="stat-balance">0</div>
+          <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Saldo Actual</div>
+        </div>
+        <div style="text-align: center; padding: 16px; background: var(--card); border-radius: 10px; border: 1px solid var(--border);">
+          <div style="font-size: 24px; font-weight: 600; color: var(--primary); margin-bottom: 4px;" id="stat-earned">0</div>
+          <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Ganados</div>
+        </div>
+        <div style="text-align: center; padding: 16px; background: var(--card); border-radius: 10px; border: 1px solid var(--border);">
+          <div style="font-size: 24px; font-weight: 600; color: var(--error); margin-bottom: 4px;" id="stat-spent">0</div>
+          <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Gastados</div>
+        </div>
+      </div>
+
+      <!-- Wallet Address -->
+      <div class="card">
+        <p style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px;">Identificador en Blockchain</p>
+        <div class="mono" id="profile-wallet" style="font-size: 11px; color: var(--text); word-break: break-all; background: var(--bg); padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+          student:12345678
+        </div>
+        <button onclick="copyWallet()" style="width: 100%; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; font-size: 13px;">
+          Copiar Identificador
+        </button>
+      </div>
+
+      <!-- Recent Transactions -->
+      <div style="margin-top: 32px;">
+        <h2 style="font-size: 15px; font-weight: 600; margin-bottom: 12px;">Transacciones Recientes</h2>
+        <div class="card" style="padding: 0; overflow: hidden;">
+          <div id="recent-tx" style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 13px;">
+            Cargando transacciones...
+          </div>
+        </div>
+      </div>
+
+      <!-- Security -->
+      <div style="margin-top: 32px;">
+        <h2 style="font-size: 15px; font-weight: 600; margin-bottom: 12px;">Seguridad</h2>
+        <button class="btn btn-outline" style="width: 100%; margin: 0 0 12px 0;" onclick="goTo('security.html')">Cambiar Contraseña</button>
+        <button class="btn btn-ghost" style="width: 100%; margin: 0; color: var(--error);" onclick="logout()">Cerrar Sesión</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <div class="bottom-nav">
+    <button class="nav-item" onclick="goTo('home.html')">
+      <div class="nav-icon">🏠</div>
+      <div class="nav-label">Inicio</div>
+    </button>
+    <button class="nav-item" onclick="goTo('#historial')">
+      <div class="nav-icon">📋</div>
+      <div class="nav-label">Historial</div>
+    </button>
+    <button class="nav-item" onclick="goTo('marketplace.html')">
+      <div class="nav-icon">🎁</div>
+      <div class="nav-label">Canjear</div>
+    </button>
+    <button class="nav-item active" onclick="goTo('profile.html')">
+      <div class="nav-icon">👤</div>
+      <div class="nav-label">Perfil</div>
+    </button>
+  </div>
+
+  <script>
+    async function loadProfile() {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const token = localStorage.getItem('token');
+
+      if (!token) {
+        window.location.href = 'login.html';
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/users/me', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          document.getElementById('profile-name').textContent = data.name || user.name || 'Estudiante';
+          document.getElementById('profile-legajo').textContent = data.legajo || user.legajo || 'SIN-DATOS';
+          document.getElementById('profile-email').textContent = data.email || user.email || '';
+          document.getElementById('profile-avatar').textContent = (data.name || 'ES').split(' ').map(n => n[0]).join('').toUpperCase();
+          document.getElementById('profile-wallet').textContent = 'student:' + (data.legajo || '12345678');
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error);
+      }
+    }
+
+    function copyWallet() {
+      const wallet = document.getElementById('profile-wallet').textContent;
+      navigator.clipboard.writeText(wallet);
+      alert('Identificador copiado al portapapeles');
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('role');
+      window.location.href = 'login.html';
+    }
+
+    function goTo(path) {
+      window.location.href = path;
+    }
+
+    loadProfile();
+  </script>
+</body>
+</html>

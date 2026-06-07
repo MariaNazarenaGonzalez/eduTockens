@@ -1,1 +1,107 @@
-<!-- TODO: Build the admin interface with point issuance form and product management section. -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel Admin - EduTokens</title>
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <div class="header">
+      <div style="font-size: 14px; font-weight: 600; color: var(--primary);">⚙️ Admin</div>
+      <div class="header-title">Panel de Control</div>
+      <button class="header-action" onclick="logout()">⊗</button>
+    </div>
+
+    <!-- Main Content -->
+    <div style="flex: 1; overflow-y: auto; padding: 0 20px; padding-bottom: 80px;">
+      <!-- Statistics Grid -->
+      <div class="admin-grid">
+        <div class="admin-stat">
+          <div class="admin-stat-val" id="stat-students">0</div>
+          <div class="admin-stat-lbl">Estudiantes</div>
+        </div>
+        <div class="admin-stat">
+          <div class="admin-stat-val" id="stat-transactions">0</div>
+          <div class="admin-stat-lbl">Transacciones</div>
+        </div>
+        <div class="admin-stat">
+          <div class="admin-stat-val" id="stat-blocks">0</div>
+          <div class="admin-stat-lbl">Bloques</div>
+        </div>
+        <div class="admin-stat">
+          <div class="admin-stat-val" id="stat-supply">0</div>
+          <div class="admin-stat-lbl">Puntos Totales</div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0;">
+        <button class="btn btn-primary" style="width: 100%; margin: 0;" onclick="goTo('admin.html')">📊 Estadísticas</button>
+        <button class="btn btn-outline" style="width: 100%; margin: 0;" onclick="showEarnForm()">➕ Emitir Puntos</button>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+        <button class="btn btn-outline" style="width: 100%; margin: 0;" onclick="showProducts()">📦 Productos</button>
+        <button class="btn btn-outline" style="width: 100%; margin: 0;" onclick="showLogs()">📋 Logs</button>
+      </div>
+
+      <!-- Tabs -->
+      <div style="display: flex; gap: 12px; margin-bottom: 20px; border-bottom: 2px solid var(--border); padding-bottom: 12px;">
+        <button id="tab-emit" style="flex: 1; padding: 10px; text-align: center; border: none; background: none; color: var(--primary); font-weight: 600; border-bottom: 2px solid var(--primary); font-family: 'DM Sans', sans-serif; cursor: pointer;" onclick="switchTab('emit')">Emitir Puntos</button>
+        <button id="tab-products" style="flex: 1; padding: 10px; text-align: center; border: none; background: none; color: var(--text-muted); font-weight: 600; border-bottom: 2px solid transparent; font-family: 'DM Sans', sans-serif; cursor: pointer;" onclick="switchTab('products')">Productos</button>
+      </div>
+
+      <!-- Emit Tab -->
+      <div id="emit-section">
+        <div id="error-msg" class="error-msg"></div>
+
+        <div class="input-group">
+          <label class="input-label">Legajo del Estudiante</label>
+          <input type="text" id="emit-legajo" class="input" placeholder="Ej: 12345678">
+        </div>
+
+        <div class="input-group">
+          <label class="input-label">Cantidad de Puntos</label>
+          <input type="number" id="emit-amount" class="input" placeholder="0" min="1">
+        </div>
+
+        <div class="input-group">
+          <label class="input-label">Concepto / Actividad</label>
+          <input type="text" id="emit-concept" class="input" placeholder="Ej: PARCIAL1, ASISTENCIA_2026-06-05">
+        </div>
+
+        <button class="btn btn-primary" style="width: 100%; margin: 20px 0;" onclick="emitPoints()">Emitir Puntos</button>
+      </div>
+
+      <!-- Products Tab -->
+      <div id="products-section" style="display: none;">
+        <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+          <button class="btn btn-primary" style="flex: 1; margin: 0;" onclick="showCreateProduct()">➕ Nuevo Producto</button>
+          <button class="btn btn-outline" style="flex: 1; margin: 0;" onclick="loadProducts()">🔄 Actualizar</button>
+        </div>
+        <div id="products-list" class="card" style="padding: 0; overflow-x: auto;">
+          <table class="admin-table" style="font-size: 11px;">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Precio</th>
+                <th>Stock</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="products-tbody">
+              <tr>
+                <td colspan="4" style="text-align: center; padding: 16px; color: var(--text-muted);">Cargando...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/admin.js"></script>
+</body>
+</html>

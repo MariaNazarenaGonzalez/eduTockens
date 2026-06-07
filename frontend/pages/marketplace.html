@@ -1,1 +1,59 @@
-<!-- TODO: Build the marketplace product grid and purchase navigation. -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marketplace - EduTokens</title>
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <div class="header">
+      <button class="header-back" onclick="history.back()">← Atrás</button>
+      <div class="header-title">Marketplace</div>
+      <div style="width: 60px;"></div>
+    </div>
+
+    <!-- Main Content -->
+    <div style="flex: 1; overflow-y: auto; padding: 0 20px; padding-bottom: 80px;">
+      <!-- Current Balance -->
+      <div style="background: linear-gradient(135deg, #5B5BF7 0%, #7C3AED 100%); color: white; border-radius: 12px; padding: 16px; margin: 16px 0;">
+        <div style="font-size: 12px; opacity: 0.8; margin-bottom: 4px;">SALDO DISPONIBLE</div>
+        <div style="font-size: 24px; font-weight: 600;">
+          <span id="marketplace-balance">0</span> puntos
+        </div>
+      </div>
+
+      <!-- Products Grid -->
+      <div id="products-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px;">
+        <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 13px; grid-column: 1/-1;">
+          Cargando productos...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <div class="bottom-nav">
+    <button class="nav-item" onclick="goTo('home.html')">
+      <div class="nav-icon">🏠</div>
+      <div class="nav-label">Inicio</div>
+    </button>
+    <button class="nav-item" onclick="goTo('#historial')">
+      <div class="nav-icon">📋</div>
+      <div class="nav-label">Historial</div>
+    </button>
+    <button class="nav-item active" onclick="goTo('marketplace.html')">
+      <div class="nav-icon">🎁</div>
+      <div class="nav-label">Canjear</div>
+    </button>
+    <button class="nav-item" onclick="goTo('profile.html')">
+      <div class="nav-icon">👤</div>
+      <div class="nav-label">Perfil</div>
+    </button>
+  </div>
+
+  <script src="../js/marketplace.js"></script>
+</body>
+</html>

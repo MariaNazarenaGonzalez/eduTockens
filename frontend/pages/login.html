@@ -1,1 +1,95 @@
-<!-- TODO: Build the login form and link to registration. -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - EduTokens</title>
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+  <div class="app">
+    <div class="screen active login-screen">
+      <div class="login-header">
+        <div class="login-logo">🎓</div>
+        <h1 class="login-title">EduTokens</h1>
+      </div>
+      <div class="login-body">
+        <div id="error-msg" class="error-msg"></div>
+
+        <div class="login-tabs">
+          <button class="login-tab active" onclick="setLoginRole('student', this)">Estudiante</button>
+          <button class="login-tab" onclick="setLoginRole('admin', this)">Administrador</button>
+        </div>
+
+        <div class="input-group">
+          <label class="input-label">Legajo / Email</label>
+          <input type="text" id="login-email" class="input" placeholder="Tu legajo o email">
+        </div>
+
+        <div class="input-group">
+          <label class="input-label">Contraseña</label>
+          <input type="password" id="login-password" class="input" placeholder="Tu contraseña">
+        </div>
+
+        <button class="btn btn-primary" style="width: 100%; margin: 20px 0;" onclick="loginAction()">Ingresar</button>
+
+        <div style="text-align: center; margin-top: 20px;">
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">¿No tienes cuenta?</p>
+          <a href="register.html" style="color: var(--primary); text-decoration: none; font-weight: 500; font-size: 13px;">Crear una cuenta</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentRole = 'student';
+
+    function setLoginRole(role, el) {
+      currentRole = role;
+      document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+    }
+
+    async function loginAction() {
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      const errorEl = document.getElementById('error-msg');
+
+      if (!email || !password) {
+        errorEl.textContent = 'Por favor completa todos los campos';
+        errorEl.classList.add('show');
+        setTimeout(() => errorEl.classList.remove('show'), 3000);
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, role: currentRole })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          localStorage.setItem('token', data.access_token);
+          localStorage.setItem('role', currentRole);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          
+          if (currentRole === 'admin') {
+            window.location.href = 'admin.html';
+          } else {
+            window.location.href = 'home.html';
+          }
+        } else {
+          throw new Error(data.detail || 'Error en el login');
+        }
+      } catch (error) {
+        errorEl.textContent = error.message;
+        errorEl.classList.add('show');
+        setTimeout(() => errorEl.classList.remove('show'), 3000);
+      }
+    }
+  </script>
+</body>
+</html>
