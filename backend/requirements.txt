@@ -1,0 +1,1 @@
+# TODO: List the backend Python dependencies required for FastAPI, database access, JWT auth, and file uploads.

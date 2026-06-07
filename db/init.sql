@@ -1,0 +1,1 @@
+-- TODO: Create the PostgreSQL schema for roles, users, products, purchases and seed any initial data.
