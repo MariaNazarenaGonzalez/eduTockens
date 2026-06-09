@@ -1,4 +1,6 @@
 -- TODO: Create the PostgreSQL schema for roles, users, products, purchases and seed any initial data.
+CREATE EXTENSION IF NOT EXISTS pgcrypto; -- Requerido para hashear contraseñas de admin creadas aquí
+
 
 CREATE TABLE IF NOT EXISTS roles (
     id SERIAL PRIMARY KEY,
@@ -46,3 +48,13 @@ CREATE INDEX IF NOT EXISTS idx_purchases_product_id ON purchases(product_id);
 INSERT INTO roles (name) VALUES ('student') ON CONFLICT DO NOTHING;
 INSERT INTO roles (name) VALUES ('admin') ON CONFLICT DO NOTHING;
 INSERT INTO roles (name) VALUES ('vendor') ON CONFLICT DO NOTHING;
+
+-- Inserto el administrador (es para dev, si tenemos tiempo, tendría que inicializarse en otro sql aparte no público o con otro método)
+INSERT INTO users (legajo, name, email, password_hash, role_id)
+VALUES (
+    'admin',
+    'Administrador',
+    'admin@edutoken.com',
+    crypt('admin1234', gen_salt('bf')),  -- cambiá la contraseña
+    (SELECT id FROM roles WHERE name = 'admin')
+) ON CONFLICT DO NOTHING;

@@ -1,12 +1,10 @@
-version: "3.9"
-
 services:
 
   frontend:
     build:
       context: ./frontend
     ports:
-      - "80:80"
+      - "8080:80"   # ← cambiás el puerto del host, no el del contenedor
     depends_on:
       - backend
 
