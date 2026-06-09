@@ -1,11 +1,18 @@
-# TODO: Implement endpoints to list products, return product details, and serve product images.
+# DEO GLORIA
 
-from fastapi import APIRouter, Depends
-from core.security import get_current_user
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import Response
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from pydantic import BaseModel
 from typing import Optional
 
+from core.database import get_db
+from core.security import get_current_user
+from models.models import Product
+
 router = APIRouter()
+
 
 class ProductResponse(BaseModel):
     id: int
@@ -15,50 +22,76 @@ class ProductResponse(BaseModel):
     stock: Optional[int]
     active: bool
 
+    class Config:
+        from_attributes = True
+
+
 @router.get("/", response_model=list[ProductResponse])
-async def get_products(current_user: dict = Depends(get_current_user)):
+async def get_products(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     """
-    List all active products
+    List all active products available in the marketplace.
     """
-    # TODO: Query products from database
-    return [
-        ProductResponse(
-            id=1,
-            name="Café",
-            description="Taza de café del campus",
-            price_points=50,
-            stock=100,
-            active=True
-        ),
-        ProductResponse(
-            id=2,
-            name="Empanada",
-            description="Empanada de carne",
-            price_points=40,
-            stock=50,
-            active=True
-        )
-    ]
+    result = await db.execute(
+        select(Product).where(Product.active == True).order_by(Product.id)
+    )
+    products = result.scalars().all()
+    return products
+
 
 @router.get("/{product_id}", response_model=ProductResponse)
-async def get_product(product_id: int, current_user: dict = Depends(get_current_user)):
+async def get_product(
+    product_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     """
-    Get product details
+    Return details of a single active product.
     """
-    # TODO: Query specific product from database
-    return ProductResponse(
-        id=product_id,
-        name="Producto",
-        description="Descripción del producto",
-        price_points=50,
-        stock=100,
-        active=True
+    result = await db.execute(
+        select(Product).where(Product.id == product_id, Product.active == True)
     )
+    product = result.scalar_one_or_none()
+
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Producto no encontrado.",
+        )
+
+    return product
+
 
 @router.get("/{product_id}/image")
-async def get_product_image(product_id: int, current_user: dict = Depends(get_current_user)):
+async def get_product_image(
+    product_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     """
-    Serve product image
+    Serve the binary image of a product with its original MIME type.
+    Returns 404 if the product doesn't exist or has no image loaded.
     """
-    # TODO: Return product image from database
-    return {"message": "Image not available"}
+    result = await db.execute(
+        select(Product).where(Product.id == product_id, Product.active == True)
+    )
+    product = result.scalar_one_or_none()
+
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Producto no encontrado.",
+        )
+
+    if not product.image_data or not product.image_mime_type:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="El producto no tiene imagen cargada.",
+        )
+
+    return Response(
+        content=product.image_data,
+        media_type=product.image_mime_type,
+    )

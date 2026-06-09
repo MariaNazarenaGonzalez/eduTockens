@@ -89,6 +89,8 @@ async def get_stats(
         student_count = count_result.scalar() or 0
 
     # TODO: Query transactions, blocks and total_supply from NCT
+    # Maybe change the schema to instead of reading from NCT, to cache data on database and retrieve that data.
+    # We would then only use NCT and blockchain to do verifications when needed.
     return StatsResponse(
         students=student_count,
         transactions=0,

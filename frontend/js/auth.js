@@ -1,5 +1,3 @@
-// TODO: Implement login/register flows, token storage, and auth request handling.
-
 const API_BASE_URL = '/api';
 
 /**
@@ -43,13 +41,15 @@ function getUserRole() {
 
 /**
  * Login del usuario
+ * @param {string} identifier - Legajo o email del usuario
+ * @param {string} password
  */
-async function login(email, password, role) {
+async function login(identifier, password) {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, role })
+      body: JSON.stringify({ identifier, password })
     });
 
     if (!response.ok) {
@@ -59,7 +59,7 @@ async function login(email, password, role) {
 
     const data = await response.json();
     saveToken(data.access_token);
-    localStorage.setItem('role', role);
+    localStorage.setItem('role', data.user.role);
     localStorage.setItem('user', JSON.stringify(data.user));
 
     return data;

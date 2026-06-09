@@ -1,4 +1,4 @@
-# TODO: Define Pydantic schemas for requests and responses: auth, users, products, purchases, admin operations.
+# DEO GLORIA
 
 from pydantic import BaseModel, EmailStr
 from typing import Optional

@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login - EduTokens</title>
   <link rel="stylesheet" href="../css/styles.css">
 </head>
+
 <body>
   <div class="app">
     <div class="screen active login-screen">
@@ -23,7 +25,7 @@
 
         <div class="input-group">
           <label class="input-label">Legajo / Email</label>
-          <input type="text" id="login-email" class="input" placeholder="Tu legajo o email">
+          <input type="text" id="login-identifier" class="input" placeholder="Tu legajo o email">
         </div>
 
         <div class="input-group">
@@ -35,7 +37,9 @@
 
         <div style="text-align: center; margin-top: 20px;">
           <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">¿No tienes cuenta?</p>
-          <a href="register.html" style="color: var(--primary); text-decoration: none; font-weight: 500; font-size: 13px;">Crear una cuenta</a>
+          <a href="register.html"
+            style="color: var(--primary); text-decoration: none; font-weight: 500; font-size: 13px;">Crear una
+            cuenta</a>
         </div>
       </div>
     </div>
@@ -51,11 +55,11 @@
     }
 
     async function loginAction() {
-      const email = document.getElementById('login-email').value;
+      const identifier = document.getElementById('login-identifier').value;
       const password = document.getElementById('login-password').value;
       const errorEl = document.getElementById('error-msg');
 
-      if (!email || !password) {
+      if (!identifier || !password) {
         errorEl.textContent = 'Por favor completa todos los campos';
         errorEl.classList.add('show');
         setTimeout(() => errorEl.classList.remove('show'), 3000);
@@ -66,23 +70,28 @@
         const response = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password, role: currentRole })
+          body: JSON.stringify({ identifier, password })
         });
 
-        const data = await response.json();
+        let data;
+        try {
+          data = await response.json();
+        } catch {
+          throw new Error('Error inesperado del servidor');
+        }
 
         if (response.ok) {
           localStorage.setItem('token', data.access_token);
-          localStorage.setItem('role', currentRole);
+          localStorage.setItem('role', data.user.role);
           localStorage.setItem('user', JSON.stringify(data.user));
-          
-          if (currentRole === 'admin') {
+
+          if (data.user.role === 'admin') {
             window.location.href = 'admin.html';
           } else {
             window.location.href = 'home.html';
           }
         } else {
-          throw new Error(data.detail || 'Error en el login');
+          throw new Error(data?.detail || 'Error en el login');
         }
       } catch (error) {
         errorEl.textContent = error.message;
@@ -92,4 +101,5 @@
     }
   </script>
 </body>
+
 </html>

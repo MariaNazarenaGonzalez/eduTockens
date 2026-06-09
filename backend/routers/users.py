@@ -1,10 +1,16 @@
-# TODO: Implement user endpoints, including the authenticated current user profile.
+# DEO GLORIA
 
-from fastapi import APIRouter, Depends
-from core.security import get_current_user
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from pydantic import BaseModel
 
+from core.database import get_db
+from core.security import get_current_user
+from models.models import User, Role
+
 router = APIRouter()
+
 
 class UserResponse(BaseModel):
     legajo: str
@@ -12,15 +18,39 @@ class UserResponse(BaseModel):
     email: str
     role: str
 
+
 @router.get("/me", response_model=UserResponse)
-async def get_current_user_profile(current_user: dict = Depends(get_current_user)):
+async def get_current_user_profile(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     """
-    Get current authenticated user profile
+    Return full profile of the authenticated user.
+    Legajo is read from the JWT payload; full data is fetched from the DB.
     """
-    # TODO: Fetch full user data from database
+    legajo = current_user.get("legajo")
+    if not legajo:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token inválido: legajo ausente.",
+        )
+
+    result = await db.execute(select(User).where(User.legajo == legajo))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuario no encontrado.",
+        )
+
+    result = await db.execute(select(Role).where(Role.id == user.role_id))
+    role = result.scalar_one_or_none()
+    role_name = role.name if role else "student"
+
     return UserResponse(
-        legajo="12345678",
-        name="Nombre del Estudiante",
-        email=current_user.get("sub", "user@example.com"),
-        role=current_user.get("role", "student")
+        legajo=user.legajo,
+        name=user.name,
+        email=user.email,
+        role=role_name,
     )
