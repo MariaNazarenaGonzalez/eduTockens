@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from core.security import get_current_user
 from core.database import get_db
-from models.models import User, Product, Role
+from models.models import User, Product, Role, Purchase
 
 router = APIRouter()
 
@@ -229,3 +229,32 @@ async def delete_product(
     product.active = False
     await db.commit()
     return {"message": "Producto dado de baja"}
+
+# ---------------------------------------------------------------------------
+# Logs Endpoint
+# ---------------------------------------------------------------------------
+
+@router.get("/logs")
+async def get_logs(
+    current_user: dict = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get the last 100 purchase logs.
+    """
+    result = await db.execute(
+        select(Purchase).order_by(Purchase.id.desc()).limit(100)
+    )
+    purchases = result.scalars().all()
+    
+    return [
+        {
+            "id": p.id,
+            "user_id": p.user_id,
+            "product_id": p.product_id,
+            "points_spent": p.points_spent,
+            "nct_transaction_id": p.nct_transaction_id,
+            "created_at": p.created_at.isoformat() if p.created_at else None,
+        }
+        for p in purchases
+    ]

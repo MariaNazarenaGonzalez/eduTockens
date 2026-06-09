@@ -51,6 +51,7 @@
       <div style="display: flex; gap: 12px; margin-bottom: 20px; border-bottom: 2px solid var(--border); padding-bottom: 12px;">
         <button id="tab-emit" style="flex: 1; padding: 10px; text-align: center; border: none; background: none; color: var(--primary); font-weight: 600; border-bottom: 2px solid var(--primary); font-family: 'DM Sans', sans-serif; cursor: pointer;" onclick="switchTab('emit')">Emitir Puntos</button>
         <button id="tab-products" style="flex: 1; padding: 10px; text-align: center; border: none; background: none; color: var(--text-muted); font-weight: 600; border-bottom: 2px solid transparent; font-family: 'DM Sans', sans-serif; cursor: pointer;" onclick="switchTab('products')">Productos</button>
+        <button id="tab-logs" style="flex: 1; padding: 10px; text-align: center; border: none; background: none; color: var(--text-muted); font-weight: 600; border-bottom: 2px solid transparent; font-family: 'DM Sans', sans-serif; cursor: pointer;" onclick="switchTab('logs')">Logs</button>
       </div>
 
       <!-- Emit Tab -->
@@ -94,6 +95,29 @@
             <tbody id="products-tbody">
               <tr>
                 <td colspan="4" style="text-align: center; padding: 16px; color: var(--text-muted);">Cargando...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Logs Tab -->
+      <div id="logs-section" style="display: none;">
+        <div id="logs-list" class="card" style="padding: 0; overflow-x: auto;">
+          <table class="admin-table" style="font-size: 11px;">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Usuario</th>
+                <th>Producto</th>
+                <th>Puntos</th>
+                <th>TX ID</th>
+                <th>Fecha</th>
+              </tr>
+            </thead>
+            <tbody id="logs-tbody">
+              <tr>
+                <td colspan="6" style="text-align: center; padding: 16px; color: var(--text-muted);">Cargando...</td>
               </tr>
             </tbody>
           </table>
