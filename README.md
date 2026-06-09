@@ -63,6 +63,7 @@ Este repositorio contiene la capa de aplicación (Frontend, Backend, Base de Dat
 - **`products.py`** - Endpoints: GET /products, GET /products/{id}, GET /products/{id}/image
 - **`purchases.py`** - Endpoints: POST /purchases, GET /purchases/me (historial del usuario)
 - **`admin.py`** - Endpoints: POST /admin/earn (emitir puntos), GET /admin/stats, GET/POST /admin/products, DELETE /admin/products/{id}
+- **`students.py`** - Endpoints: GET /students/{legajo}/balance, GET /students/{legajo}/transactions
 
 ### Servicios (`backend/services/`)
 - **`nct_client.py`** - Cliente HTTP para NCT: get_balance(), get_transactions(), emit_earn(), emit_spend()
@@ -176,3 +177,8 @@ El archivo `docker-compose.yml` configura automáticamente estos valores para de
 **Documentación Relacionada:**
 - [propuesta_profesores(1).md](propuesta_profesores(1).md) - Caso de uso y especificaciones
 - [sistema_frontend_backend_bd.md](sistema_frontend_backend_bd.md) - Diseño técnico detallado
+
+## Notas de cambios
+
+- 2026-06-09: Se añadió el router `students` con endpoints `GET /students/{legajo}/balance` y `GET /students/{legajo}/transactions` para consulta de saldo e historial a través del backend.
+- 2026-06-09: Corregido comportamiento de redirección 307 en `GET /products` (ahora acepta la ruta sin slash), evitando que proxies/servidores frontales impidieran la carga desde el frontend.

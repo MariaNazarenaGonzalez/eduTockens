@@ -26,7 +26,7 @@ class ProductResponse(BaseModel):
         from_attributes = True
 
 
-@router.get("/", response_model=list[ProductResponse])
+@router.get("", response_model=list[ProductResponse])
 async def get_products(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

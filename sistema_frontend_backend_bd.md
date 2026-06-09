@@ -238,6 +238,11 @@ El proyecto define tres servicios en Docker Compose:
 - `backend` — FastAPI corriendo con Uvicorn
 - `db` — PostgreSQL
 
+## Notas de cambios
+
+- 2026-06-09: Se añadió el router `students` con endpoints `GET /students/{legajo}/balance` y `GET /students/{legajo}/transactions` para que el frontend consulte saldo e historial a través del backend.
+- 2026-06-09: Corregido el problema de redirección 307 en `GET /products` (acepta la ruta sin slash), lo que solucionó fallos de carga en el `marketplace` desde el frontend detrás de proxies.
+
 ### 6.2 `docker-compose.yml`
 
 ```yaml
