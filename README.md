@@ -21,14 +21,14 @@ Este repositorio contiene la capa de aplicación (Frontend, Backend, Base de Dat
 - **`frontend/index.html`** - Homepage pública con descripción del sistema y enlaces a login/registro. Accesible sin autenticación.
 
 #### Autenticación
-- **`frontend/pages/login.html`** - Formulario de login con tabs para Estudiante/Administrador. Almacena JWT en localStorage.
-- **`frontend/pages/register.html`** - Formulario de registro para nuevos estudiantes con validación de campos.
+- **`frontend/pages/login.html`** - Formulario de login por desafío firmado con clave privada. Almacena JWT en localStorage.
+- **`frontend/pages/register.html`** - Formulario de registro para nuevos estudiantes con clave pública y validación de firma.
 
 #### Dashboard de Estudiante
 - **`frontend/pages/home.html`** - Homepage del estudiante con balance en blockchain, métricas (ganados/gastados/transacciones) e historial reciente.
 - **`frontend/pages/marketplace.html`** - Grilla de productos disponibles con precios en puntos. Filtro de categorías y navegación a compra.
 - **`frontend/pages/purchase.html`** - Confirmación de compra con detalle del producto, cálculo de saldo restante y validación.
-- **`frontend/pages/profile.html`** - Perfil del estudiante con datos, identificador en blockchain, estadísticas y acceso a cambiar contraseña.
+- **`frontend/pages/profile.html`** - Perfil del estudiante con datos, identificador en blockchain y estadísticas.
 
 #### Panel de Administración
 - **`frontend/pages/admin.html`** - Dashboard admin con estadísticas globales, tabs para emisión de puntos y gestión de productos.
@@ -49,16 +49,16 @@ Este repositorio contiene la capa de aplicación (Frontend, Backend, Base de Dat
 ### Configuración (`backend/core/`)
 - **`config.py`** - Configuración de aplicación desde variables de entorno (DATABASE_URL, JWT_SECRET, NCT_BASE_URL, etc.)
 - **`database.py`** - Configuración de SQLAlchemy async engine, session maker, Base ORM, función init_db()
-- **`security.py`** - Funciones de autenticación: hash_password(), verify_password(), create_access_token(), verify_token(), get_current_user()
+- **`security.py`** - Funciones de autenticación JWT: create_access_token(), verify_token(), get_current_user()
 
 ### Modelos ORM (`backend/models/`)
-- **`models.py`** - Modelos SQLAlchemy para: Role, User (legajo, name, email, password_hash), Product (name, price_points, stock, image_data), Purchase (user_id, product_id, points_spent, nct_transaction_id)
+- **`models.py`** - Modelos SQLAlchemy para: Role, User (legajo, name, email, public_key_pem), Product (name, price_points, stock, image_data), Purchase (user_id, product_id, points_spent, nct_transaction_id)
 
 ### Esquemas Pydantic (`backend/schemas/`)
 - **`schemas.py`** - Esquemas de validación para requests/responses: UserRegister, UserLogin, TokenResponse, ProductCreate/Update, PurchaseCreate, EarnRequest, AdminStats
 
 ### Routers API (`backend/routers/`)
-- **`auth.py`** - Endpoints: POST /auth/register, POST /auth/login, POST /auth/logout
+- **`auth.py`** - Endpoints: GET /auth/challenge, POST /auth/register, POST /auth/login, POST /auth/logout
 - **`users.py`** - Endpoint: GET /users/me (obtener perfil del usuario autenticado)
 - **`products.py`** - Endpoints: GET /products, GET /products/{id}, GET /products/{id}/image
 - **`purchases.py`** - Endpoints: POST /purchases, GET /purchases/me (historial del usuario)
@@ -74,15 +74,15 @@ Este repositorio contiene la capa de aplicación (Frontend, Backend, Base de Dat
 ## Flujo de Uso
 
 ### Estudiante
-1. **Registro** (`pages/register.html`) - Crear cuenta con legajo, nombre, email y contraseña
-2. **Login** (`pages/login.html`) - Autenticarse y recibir JWT
+1. **Registro** (`pages/register.html`) - Crear cuenta con legajo, nombre, email, clave pública y desafío firmado
+2. **Login** (`pages/login.html`) - Firmar el desafío del sistema y recibir JWT
 3. **Dashboard** (`pages/home.html`) - Ver saldo confirmado, historial y acciones rápidas
 4. **Marketplace** (`pages/marketplace.html`) - Explorar productos disponibles
 5. **Compra** (`pages/purchase.html`) - Confirmar compra y emitir transacción SPEND
 6. **Perfil** (`pages/profile.html`) - Ver datos, identificador en blockchain y estadísticas
 
 ### Administrador
-1. **Login** (`pages/login.html`) - Autenticarse como admin
+1. **Login** (`pages/login.html`) - Autenticarse como admin firmando el desafío con su clave privada
 2. **Dashboard** (`pages/admin.html`) - Ver estadísticas globales
 3. **Emisión de Puntos** - Emitir EARN a estudiantes por actividades académicas
 4. **Gestión de Productos** - Crear, editar, eliminar productos del marketplace
@@ -94,6 +94,7 @@ El frontend se comunica con el backend a través de una API REST en `http://loca
 **Autenticación:**
 - `POST /auth/register` - Registrar estudiante
 - `POST /auth/login` - Login y obtener JWT
+- `GET /auth/challenge` - Obtener desafío actual del servidor
 
 **Estudiante:**
 - `GET /students/{legajo}/balance` - Consultar saldo
@@ -115,6 +116,7 @@ El frontend se comunica con el backend a través de una API REST en `http://loca
 - **Iconos:** Emojis Unicode + SVG inline
 
 ### Autenticación
+- **Clave pública + firma ECDSA** - Registro y login por desafío firmado
 - **JWT (JSON Web Tokens)** - Token-based stateless auth
 - **localStorage** - Almacenamiento de tokens y user data
 - **Headers Bearer** - Inclusión de token en requests
@@ -159,7 +161,7 @@ El archivo `docker-compose.yml` configura automáticamente estos valores para de
 - **JWT Stateless:** El logout no invalida el token del lado del servidor (memset en producción)
 - **Sin HTTPS:** Setup local solo. En producción usar Ingress con certificado TLS
 - **Imágenes en BYTEA:** Almacenadas en PostgreSQL. En producción usar Cloud Storage
-- **Sin firma ECDSA:** El backend acepta emisiones de ACADEMIC_SYSTEM sin validar emisor (usar firma en producción)
+- **Clave admin de desarrollo:** El seed inicial incluye una clave pública de ejemplo; reemplazarla en entornos compartidos o productivos
 
 ## Roadmap
 

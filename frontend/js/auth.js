@@ -42,14 +42,15 @@ function getUserRole() {
 /**
  * Login del usuario
  * @param {string} identifier - Legajo o email del usuario
- * @param {string} password
+ * @param {string} challenge
+ * @param {string} signature
  */
-async function login(identifier, password) {
+async function login(identifier, challenge, signature) {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ identifier, password })
+      body: JSON.stringify({ identifier, challenge, signature })
     });
 
     if (!response.ok) {
@@ -72,12 +73,12 @@ async function login(identifier, password) {
 /**
  * Registro del usuario
  */
-async function register(legajo, name, email, password) {
+async function register(legajo, name, email, public_key_pem, challenge, signature) {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ legajo, name, email, password })
+      body: JSON.stringify({ legajo, name, email, public_key_pem, challenge, signature })
     });
 
     if (!response.ok) {

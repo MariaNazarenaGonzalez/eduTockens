@@ -218,6 +218,12 @@ body {
   box-shadow: 0 4px 16px rgba(91, 91, 247, 0.3);
 }
 .btn-primary:active { transform: translateY(0); }
+.btn-secondary {
+  background: var(--card);
+  color: var(--primary);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover { background: #EEF2FF; }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 .btn-outline { background: transparent; color: var(--primary); border: 1.5px solid var(--primary); }
 .btn-outline:hover { background: #EEF2FF; }

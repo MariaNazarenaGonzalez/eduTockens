@@ -1,7 +1,4 @@
 -- TODO: Create the PostgreSQL schema for roles, users, products, purchases and seed any initial data.
-CREATE EXTENSION IF NOT EXISTS pgcrypto; -- Requerido para hashear contraseñas de admin creadas aquí
-
-
 CREATE TABLE IF NOT EXISTS roles (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) UNIQUE NOT NULL
@@ -12,7 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
     legajo VARCHAR(20) UNIQUE NOT NULL,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(150) UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
+    public_key_pem TEXT NOT NULL,
     role_id INTEGER REFERENCES roles(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -49,12 +46,16 @@ INSERT INTO roles (name) VALUES ('student') ON CONFLICT DO NOTHING;
 INSERT INTO roles (name) VALUES ('admin') ON CONFLICT DO NOTHING;
 INSERT INTO roles (name) VALUES ('vendor') ON CONFLICT DO NOTHING;
 
--- Inserto el administrador (es para dev, si tenemos tiempo, tendría que inicializarse en otro sql aparte no público o con otro método)
-INSERT INTO users (legajo, name, email, password_hash, role_id)
+-- Inserto el administrador para desarrollo. Reemplazar esta clave pública en producción.
+INSERT INTO users (legajo, name, email, public_key_pem, role_id)
 VALUES (
     'admin',
     'Administrador',
     'admin@edutoken.com',
-    crypt('admin1234', gen_salt('bf')),  -- cambiá la contraseña
+    '-----BEGIN PUBLIC KEY-----
+MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE1WMs8+iLm03G8FTwdOWVet2GgtJGuVIx
+zQwRO8GZqt3wUUmOkDxRNrWRYBdAly+4SAp87CBZeBMtfuGJQZ8GEbbX7XGTh+Ip
+GvaTWABJw+R+LRStRIvonouUN+7PYu0l
+-----END PUBLIC KEY-----',
     (SELECT id FROM roles WHERE name = 'admin')
 ) ON CONFLICT DO NOTHING;

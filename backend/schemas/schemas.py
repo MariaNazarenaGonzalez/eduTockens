@@ -9,12 +9,14 @@ class UserRegister(BaseModel):
     legajo: str
     name: str
     email: EmailStr
-    password: str
+    public_key_pem: str
+    challenge: str
+    signature: str
 
 class UserLogin(BaseModel):
-    email: str
-    password: str
-    role: str = "student"
+    identifier: str
+    challenge: str
+    signature: str
 
 class TokenResponse(BaseModel):
     access_token: str

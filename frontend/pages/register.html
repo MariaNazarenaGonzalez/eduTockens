@@ -37,15 +37,27 @@
         </div>
 
         <div class="input-group">
-          <label class="input-label">Contraseña</label>
-          <input type="password" id="reg-password" class="input" placeholder="Mínimo 8 caracteres">
+          <label class="input-label">Clave pública</label>
+          <textarea id="reg-public-key" class="input" rows="6" placeholder="-----BEGIN PUBLIC KEY-----"></textarea>
         </div>
 
         <div class="input-group">
-          <label class="input-label">Confirmar Contraseña</label>
-          <input type="password" id="reg-confirm" class="input" placeholder="Repite tu contraseña">
+          <label class="input-label">Desafío del sistema</label>
+          <input type="text" id="reg-challenge" class="input" readonly>
         </div>
 
+        <div class="input-group">
+          <label class="input-label">Desafío firmado con clave privada</label>
+          <textarea id="reg-signature" class="input" rows="4" placeholder="Firma hexadecimal del desafío"></textarea>
+        </div>
+
+        <div class="input-group">
+          <label class="input-label">Clave privada (opcional para firmar aquí)</label>
+          <textarea id="reg-private-key" class="input" rows="6" placeholder="-----BEGIN PRIVATE KEY-----"></textarea>
+        </div>
+
+        <button class="btn btn-secondary" style="width: 100%; margin-top: 12px;" onclick="generateRegisterKeys()">Generar claves</button>
+        <button class="btn btn-secondary" style="width: 100%; margin-top: 12px;" onclick="signRegisterChallenge()">Firmar desafío</button>
         <button class="btn btn-primary" style="width: 100%; margin: 20px 0;" onclick="registerAction()">Crear Cuenta</button>
 
         <div style="text-align: center; margin-top: 16px;">
@@ -56,32 +68,65 @@
     </div>
   </div>
 
+  <script src="../js/crypto-auth.js"></script>
   <script>
+    async function loadRegisterChallenge() {
+      const errorEl = document.getElementById('error-msg');
+      try {
+        document.getElementById('reg-challenge').value = await fetchAuthChallenge();
+      } catch (error) {
+        errorEl.textContent = error.message;
+        errorEl.classList.add('show');
+      }
+    }
+
+    async function generateRegisterKeys() {
+      const errorEl = document.getElementById('error-msg');
+      try {
+        const keys = await generateEcdsaKeyPairPem();
+        document.getElementById('reg-public-key').value = keys.publicKeyPem;
+        document.getElementById('reg-private-key').value = keys.privateKeyPem;
+        await signRegisterChallenge();
+      } catch (error) {
+        errorEl.textContent = 'No se pudieron generar las claves en el navegador';
+        errorEl.classList.add('show');
+        setTimeout(() => errorEl.classList.remove('show'), 3000);
+      }
+    }
+
+    async function signRegisterChallenge() {
+      const privateKey = document.getElementById('reg-private-key').value.trim();
+      const challenge = document.getElementById('reg-challenge').value.trim();
+      const errorEl = document.getElementById('error-msg');
+
+      if (!privateKey || !challenge) {
+        errorEl.textContent = 'Pegá la clave privada y obtené un desafío antes de firmar';
+        errorEl.classList.add('show');
+        setTimeout(() => errorEl.classList.remove('show'), 3000);
+        return;
+      }
+
+      try {
+        document.getElementById('reg-signature').value = await signChallengeWithPrivateKey(privateKey, challenge);
+      } catch (error) {
+        errorEl.textContent = 'No se pudo firmar el desafío con la clave privada';
+        errorEl.classList.add('show');
+        setTimeout(() => errorEl.classList.remove('show'), 3000);
+      }
+    }
+
     async function registerAction() {
       const legajo = document.getElementById('reg-legajo').value;
       const name = document.getElementById('reg-name').value;
       const email = document.getElementById('reg-email').value;
-      const password = document.getElementById('reg-password').value;
-      const confirm = document.getElementById('reg-confirm').value;
+      const public_key_pem = document.getElementById('reg-public-key').value.trim();
+      const challenge = document.getElementById('reg-challenge').value;
+      const signature = document.getElementById('reg-signature').value.trim();
       const errorEl = document.getElementById('error-msg');
       const successEl = document.getElementById('success-msg');
 
-      if (!legajo || !name || !email || !password || !confirm) {
+      if (!legajo || !name || !email || !public_key_pem || !challenge || !signature) {
         errorEl.textContent = 'Por favor completa todos los campos';
-        errorEl.classList.add('show');
-        setTimeout(() => errorEl.classList.remove('show'), 3000);
-        return;
-      }
-
-      if (password !== confirm) {
-        errorEl.textContent = 'Las contraseñas no coinciden';
-        errorEl.classList.add('show');
-        setTimeout(() => errorEl.classList.remove('show'), 3000);
-        return;
-      }
-
-      if (password.length < 8) {
-        errorEl.textContent = 'La contraseña debe tener al menos 8 caracteres';
         errorEl.classList.add('show');
         setTimeout(() => errorEl.classList.remove('show'), 3000);
         return;
@@ -91,7 +136,7 @@
         const response = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ legajo, name, email, password })
+          body: JSON.stringify({ legajo, name, email, public_key_pem, challenge, signature })
         });
 
         const data = await response.json();
@@ -109,8 +154,11 @@
         errorEl.textContent = error.message;
         errorEl.classList.add('show');
         setTimeout(() => errorEl.classList.remove('show'), 3000);
+        loadRegisterChallenge();
       }
     }
+
+    loadRegisterChallenge();
   </script>
 </body>
 </html>

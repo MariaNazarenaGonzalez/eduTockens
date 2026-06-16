@@ -29,10 +29,21 @@
         </div>
 
         <div class="input-group">
-          <label class="input-label">Contraseña</label>
-          <input type="password" id="login-password" class="input" placeholder="Tu contraseña">
+          <label class="input-label">Desafío del sistema</label>
+          <input type="text" id="login-challenge" class="input" readonly>
         </div>
 
+        <div class="input-group">
+          <label class="input-label">Desafío firmado con clave privada</label>
+          <textarea id="login-signature" class="input" rows="4" placeholder="Firma hexadecimal del desafío"></textarea>
+        </div>
+
+        <div class="input-group">
+          <label class="input-label">Clave privada (opcional para firmar aquí)</label>
+          <textarea id="login-private-key" class="input" rows="6" placeholder="-----BEGIN PRIVATE KEY-----"></textarea>
+        </div>
+
+        <button class="btn btn-secondary" style="width: 100%; margin-top: 12px;" onclick="signLoginChallenge()">Firmar desafío</button>
         <button class="btn btn-primary" style="width: 100%; margin: 20px 0;" onclick="loginAction()">Ingresar</button>
 
         <div style="text-align: center; margin-top: 20px;">
@@ -45,6 +56,7 @@
     </div>
   </div>
 
+  <script src="../js/crypto-auth.js"></script>
   <script>
     let currentRole = 'student';
 
@@ -54,12 +66,44 @@
       el.classList.add('active');
     }
 
-    async function loginAction() {
-      const identifier = document.getElementById('login-identifier').value;
-      const password = document.getElementById('login-password').value;
+    async function loadLoginChallenge() {
+      const errorEl = document.getElementById('error-msg');
+      try {
+        document.getElementById('login-challenge').value = await fetchAuthChallenge();
+      } catch (error) {
+        errorEl.textContent = error.message;
+        errorEl.classList.add('show');
+      }
+    }
+
+    async function signLoginChallenge() {
+      const privateKey = document.getElementById('login-private-key').value.trim();
+      const challenge = document.getElementById('login-challenge').value.trim();
       const errorEl = document.getElementById('error-msg');
 
-      if (!identifier || !password) {
+      if (!privateKey || !challenge) {
+        errorEl.textContent = 'Pegá la clave privada y obtené un desafío antes de firmar';
+        errorEl.classList.add('show');
+        setTimeout(() => errorEl.classList.remove('show'), 3000);
+        return;
+      }
+
+      try {
+        document.getElementById('login-signature').value = await signChallengeWithPrivateKey(privateKey, challenge);
+      } catch (error) {
+        errorEl.textContent = 'No se pudo firmar el desafío con la clave privada';
+        errorEl.classList.add('show');
+        setTimeout(() => errorEl.classList.remove('show'), 3000);
+      }
+    }
+
+    async function loginAction() {
+      const identifier = document.getElementById('login-identifier').value;
+      const challenge = document.getElementById('login-challenge').value;
+      const signature = document.getElementById('login-signature').value.trim();
+      const errorEl = document.getElementById('error-msg');
+
+      if (!identifier || !challenge || !signature) {
         errorEl.textContent = 'Por favor completa todos los campos';
         errorEl.classList.add('show');
         setTimeout(() => errorEl.classList.remove('show'), 3000);
@@ -70,7 +114,7 @@
         const response = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identifier, password })
+          body: JSON.stringify({ identifier, challenge, signature })
         });
 
         let data;
@@ -97,8 +141,11 @@
         errorEl.textContent = error.message;
         errorEl.classList.add('show');
         setTimeout(() => errorEl.classList.remove('show'), 3000);
+        loadLoginChallenge();
       }
     }
+
+    loadLoginChallenge();
   </script>
 </body>
 

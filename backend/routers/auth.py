@@ -1,25 +1,36 @@
+from datetime import datetime, timedelta
+
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec
 
 from core.database import get_db
-from core.security import hash_password, verify_password, create_access_token
+from core.security import create_access_token
 from models.models import User, Role
 
 router = APIRouter()
+
+
+CHALLENGE_FORMAT = "%Y-%m-%d %H:%M"
 
 
 class RegisterRequest(BaseModel):
     legajo: str
     name: str
     email: EmailStr
-    password: str
+    public_key_pem: str
+    challenge: str
+    signature: str
 
 
 class LoginRequest(BaseModel):
     identifier: str  # Accepts legajo or email
-    password: str
+    challenge: str
+    signature: str
 
 
 class TokenResponse(BaseModel):
@@ -28,11 +39,81 @@ class TokenResponse(BaseModel):
     user: dict
 
 
+def current_challenge() -> str:
+    return datetime.now().strftime(CHALLENGE_FORMAT)
+
+
+def is_valid_challenge(challenge: str) -> bool:
+    now = datetime.now()
+    valid_challenges = {
+        (now + timedelta(minutes=offset)).strftime(CHALLENGE_FORMAT)
+        for offset in (-1, 0, 1)
+    }
+    return challenge in valid_challenges
+
+
+def validate_public_key(public_key_pem: str):
+    try:
+        public_key = serialization.load_pem_public_key(public_key_pem.encode("utf-8"))
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="La clave pública debe estar en formato PEM.",
+        )
+
+    if not isinstance(public_key, ec.EllipticCurvePublicKey):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="La clave pública debe ser ECDSA.",
+        )
+
+    return public_key
+
+
+def verify_signed_challenge(public_key_pem: str, challenge: str, signature_hex: str):
+    if not is_valid_challenge(challenge):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="El desafío expiró. Solicitá uno nuevo.",
+        )
+
+    try:
+        signature = bytes.fromhex(signature_hex)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="La firma debe estar codificada en hexadecimal.",
+        )
+
+    public_key = validate_public_key(public_key_pem)
+    try:
+        public_key.verify(
+            signature,
+            challenge.encode("utf-8"),
+            ec.ECDSA(hashes.SHA1()),
+        )
+    except InvalidSignature:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Firma inválida para el desafío provisto.",
+        )
+
+
+@router.get("/challenge")
+async def get_challenge():
+    """
+    Return the current server challenge. It changes once per minute.
+    """
+    return {"challenge": current_challenge()}
+
+
 @router.post("/register", response_model=dict, status_code=status.HTTP_201_CREATED)
 async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)):
     """
-    Register a new student. Legajo and email must be unique.
+    Register a new student with a public key. Legajo and email must be unique.
     """
+    verify_signed_challenge(data.public_key_pem, data.challenge, data.signature)
+
     # Check legajo not taken
     result = await db.execute(select(User).where(User.legajo == data.legajo))
     if result.scalar_one_or_none():
@@ -62,7 +143,7 @@ async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)):
         legajo=data.legajo,
         name=data.name,
         email=data.email,
-        password_hash=hash_password(data.password),
+        public_key_pem=data.public_key_pem,
         role_id=role.id,
     )
     db.add(user)
@@ -82,8 +163,8 @@ async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)):
 @router.post("/login", response_model=TokenResponse)
 async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
     """
-    Authenticate user by legajo or email + password. Returns JWT with sub (email),
-    legajo, and role embedded in the payload.
+    Authenticate user by legajo or email + ECDSA signed challenge. Returns JWT
+    with sub (email), legajo, and role embedded in the payload.
     """
     result = await db.execute(
         select(User).where(
@@ -92,11 +173,13 @@ async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
     )
     user = result.scalar_one_or_none()
 
-    if not user or not verify_password(data.password, user.password_hash):
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenciales incorrectas.",
         )
+
+    verify_signed_challenge(user.public_key_pem, data.challenge, data.signature)
 
     # Resolve role name
     result = await db.execute(select(Role).where(Role.id == user.role_id))

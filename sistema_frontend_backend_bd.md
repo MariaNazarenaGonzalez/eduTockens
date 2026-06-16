@@ -41,12 +41,12 @@ HTML5, CSS3 y JavaScript vanilla. Sin frameworks ni herramientas de build. Los a
 Pantalla de entrada al sistema. Describe el propósito del sistema de puntos académicos. El header incluye un enlace a la pantalla de login. No requiere autenticación.
 
 #### Login (`/login`)
-Formulario con campos de legajo y contraseña. Al autenticarse correctamente, el backend devuelve un JWT que el frontend almacena en memoria de sesión. La redirección post-login depende del rol:
+Formulario con legajo/email, desafio del sistema y firma del desafio con clave privada. La pantalla incluye un apartado opcional para pegar la clave privada y firmar desde el navegador. Al autenticarse correctamente, el backend devuelve un JWT que el frontend almacena en memoria de sesión. La redirección post-login depende del rol:
 - `student` → Homepage de estudiante
 - `admin` → Panel de administración
 
 #### Register (`/register`)
-Formulario de registro para nuevos estudiantes. Campos: legajo, nombre completo, email y contraseña. Solo disponible para el rol `student`; los administradores son creados directamente en la base de datos.
+Formulario de registro para nuevos estudiantes. Campos: legajo, nombre completo, email, clave publica, desafio del sistema y firma del desafio. Incluye una accion opcional para generar un par de claves ECDSA P-384 en el navegador. Solo disponible para el rol `student`; los administradores son creados directamente en la base de datos.
 
 #### Homepage de estudiante (`/home`)
 Pantalla principal del estudiante autenticado. Muestra:
@@ -91,14 +91,14 @@ Python 3.11 con FastAPI. Dependencias principales:
 - `sqlalchemy` — ORM para PostgreSQL
 - `asyncpg` — driver async para PostgreSQL
 - `python-jose` — generación y validación de JWT
-- `passlib` — hashing de contraseñas (bcrypt)
+- `cryptography` — validacion de firmas ECDSA en registro y login
 - `httpx` — cliente HTTP async para comunicarse con el NCT
 - `python-multipart` — soporte para recepción de archivos vía `multipart/form-data` (requerido para la carga de imágenes de productos)
 
 ### 4.2 Responsabilidades
 
-- Autenticar usuarios y emitir JWT con información de rol
-- Registrar nuevos estudiantes
+- Autenticar usuarios por desafio firmado y emitir JWT con información de rol
+- Registrar nuevos estudiantes con clave publica validada por firma
 - Proteger endpoints según rol (`student` o `admin`)
 - Listar y gestionar productos del marketplace
 - Recibir, almacenar y servir imágenes de productos
@@ -115,6 +115,7 @@ Python 3.11 con FastAPI. Dependencias principales:
 |---|---|---|
 | `POST` | `/auth/register` | Registrar nuevo estudiante |
 | `POST` | `/auth/login` | Login, devuelve JWT |
+| `GET` | `/auth/challenge` | Desafio actual del servidor para firmar |
 | `POST` | `/auth/logout` | Logout (descarte del token en el cliente) |
 
 > **Nota:** el logout es stateless. El backend no invalida el JWT del lado del servidor; el cliente descarta el token localmente. Esto se documenta como limitación conocida, consistente con el alcance del proyecto.
@@ -189,7 +190,7 @@ PostgreSQL 15.
 | `legajo` | `VARCHAR(20) UNIQUE NOT NULL` | Legajo universitario del estudiante |
 | `name` | `VARCHAR(100) NOT NULL` | Nombre completo |
 | `email` | `VARCHAR(150) UNIQUE NOT NULL` | Email |
-| `password_hash` | `TEXT NOT NULL` | Contraseña hasheada con bcrypt |
+| `public_key_pem` | `TEXT NOT NULL` | Clave publica ECDSA del usuario en formato PEM |
 | `role_id` | `INTEGER REFERENCES roles(id)` | Rol del usuario |
 | `created_at` | `TIMESTAMP DEFAULT NOW()` | Fecha de registro |
 

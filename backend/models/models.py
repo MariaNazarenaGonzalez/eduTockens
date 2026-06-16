@@ -20,7 +20,7 @@ class User(Base):
     legajo = Column(String(20), unique=True, nullable=False, index=True)
     name = Column(String(100), nullable=False)
     email = Column(String(150), unique=True, nullable=False, index=True)
-    password_hash = Column(Text, nullable=False)
+    public_key_pem = Column(Text, nullable=False)
     role_id = Column(Integer, ForeignKey("roles.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
     
