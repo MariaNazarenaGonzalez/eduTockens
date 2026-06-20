@@ -41,12 +41,12 @@ HTML5, CSS3 y JavaScript vanilla. Sin frameworks ni herramientas de build. Los a
 Pantalla de entrada al sistema. Describe el propósito del sistema de puntos académicos. El header incluye un enlace a la pantalla de login. No requiere autenticación.
 
 #### Login (`/login`)
-Formulario con legajo/email, desafio del sistema y firma del desafio con clave privada. La pantalla incluye un apartado opcional para pegar la clave privada y firmar desde el navegador. Al autenticarse correctamente, el backend devuelve un JWT que el frontend almacena en memoria de sesión. La redirección post-login depende del rol:
+Formulario con legajo/email, contraseña, desafío del sistema, desafío firmado y clave privada (opcional). La clave privada Ed25519 del usuario se almacena cifrada localmente. Al iniciar sesión, la clave se descifra localmente con la contraseña provista para firmar el desafío. Al autenticarse correctamente contra el backend (quien valida la firma con la clave pública almacenada y verifica la contraseña), devuelve un JWT que el frontend almacena en `localStorage` (sesión activa). La redirección post-login depende del rol:
 - `student` → Homepage de estudiante
 - `admin` → Panel de administración
 
 #### Register (`/register`)
-Formulario de registro para nuevos estudiantes. Campos: legajo, nombre completo, email, clave publica, desafio del sistema y firma del desafio. Incluye una accion opcional para generar un par de claves ECDSA P-384 en el navegador. Solo disponible para el rol `student`; los administradores son creados directamente en la base de datos.
+Formulario de registro para nuevos estudiantes. Campos: legajo, nombre completo, email, contraseña, clave pública, desafío del sistema, desafío firmado y clave privada. Incluye una acción para generar un par de claves Ed25519 de forma local utilizando `@noble/curves`. La clave privada generada se cifra localmente mediante AES-GCM (derivando la clave con PBKDF2) utilizando la contraseña del estudiante y se almacena en `localStorage` bajo `walletCipher:{legajo}`. Solo la clave pública y el hash de la contraseña se envían al backend durante el registro. Solo disponible para el rol `student`; los administradores son creados directamente en la base de datos (seed).
 
 #### Homepage de estudiante (`/home`)
 Pantalla principal del estudiante autenticado. Muestra:
@@ -63,20 +63,21 @@ Pantalla de confirmación de compra para un producto específico. Muestra el det
 - **Saldo insuficiente:** mensaje de error con botón para volver al marketplace
 
 #### Panel de administración (`/admin`)
-Exclusivo para usuarios con rol `admin`. Contiene dos secciones:
+Exclusivo para usuarios con rol `admin`. Contiene cuatro secciones/pestañas principales:
 
-**Emisión de puntos:** formulario para otorgar puntos a un estudiante. Campos: legajo del estudiante, cantidad de puntos y concepto (ej: `PARCIAL1`, `ASISTENCIA_2026-06-05`). Al enviar, el backend emite una transacción EARN al NCT.
+**Emisión de puntos:** formulario para otorgar puntos a un estudiante. Campos: legajo del estudiante, cantidad de puntos y concepto (ej: `PARCIAL1`, `ASISTENCIA_2026-06-05`). Al enviar, el backend construye la transacción EARN, la firma digitalmente con la clave privada de la autoridad académica y la transmite al NCT.
 
-**Gestión de productos:** tabla de todos los productos (activos e inactivos) con las siguientes operaciones:
+**Gestión de productos:** permite dar de alta y listar productos disponibles:
+- **Añadir producto:** formulario con campos: nombre, descripción, precio en puntos, stock (campo opcional; vacío implica ilimitado) y selector de vendor asociado (de la lista de vendors). La petición se envía como JSON al backend.
+- **Eliminar producto:** botón para eliminar físicamente el producto de la base de datos local (mediante petición HTTP DELETE).
 
-- **Añadir producto:** formulario con campos nombre, descripción, precio en puntos, stock (campo opcional; vacío implica ilimitado) y selector de imagen. La imagen se envía al backend como `multipart/form-data` y se almacena en la base de datos.
-- **Modificar producto:** mismo formulario de carga, pre-completado con los datos actuales del producto. Permite actualizar cualquier campo incluyendo la imagen.
-- **Modificar stock:** campo numérico directo en la fila de la tabla para ajustar el stock de un producto sin necesidad de abrir el formulario completo.
-- **Eliminar producto:** botón de baja con diálogo de confirmación. Marca el producto como inactivo (`active = FALSE`); no elimina el registro de la base de datos para preservar la integridad referencial con la tabla `purchases`.
+**Gestión de vendors:** formulario para dar de alta nuevos vendedores. Al enviar el nombre del vendor, el backend genera un par de claves Ed25519, descarta la clave privada inmediatamente, y almacena únicamente el nombre y la clave pública (dirección receptora pasiva) en la tabla `vendors`.
+
+**Logs de auditoría:** tabla que muestra las últimas 30 compras realizadas en el sistema (legajo del estudiante, nombre del producto, puntos gastados, ID de transacción del NCT y fecha), consultadas de la base de datos local de eduTockens.
 
 ### 3.3 Manejo de autenticación en el frontend
 
-El JWT recibido al hacer login se almacena en memoria (variable JavaScript). Se incluye en el header `Authorization: Bearer <token>` en cada request al backend. Las rutas protegidas verifican la presencia del token antes de renderizar; si no existe, redirigen al login.
+El JWT recibido al hacer login se almacena en `localStorage` (bajo la clave `token`). Se incluye en el header `Authorization: Bearer <token>` en cada request al backend. Las rutas protegidas verifican la presencia del token antes de renderizar; si no existe, redirigen al login. Asimismo, la clave pública activa y la clave privada activa (temporalmente descifrada) se gestionan localmente en `localStorage` para autorizar operaciones y firmar transacciones SPEND de forma transparente.
 
 ---
 
@@ -91,21 +92,21 @@ Python 3.11 con FastAPI. Dependencias principales:
 - `sqlalchemy` — ORM para PostgreSQL
 - `asyncpg` — driver async para PostgreSQL
 - `python-jose` — generación y validación de JWT
-- `cryptography` — validacion de firmas ECDSA en registro y login
+- `cryptography` — validación de firmas Ed25519 en registro, login y firma de transacciones EARN
 - `httpx` — cliente HTTP async para comunicarse con el NCT
-- `python-multipart` — soporte para recepción de archivos vía `multipart/form-data` (requerido para la carga de imágenes de productos)
+- `python-multipart` — soporte para recepción de archivos vía `multipart/form-data`
 
 ### 4.2 Responsabilidades
 
 - Autenticar usuarios por desafio firmado y emitir JWT con información de rol
-- Registrar nuevos estudiantes con clave publica validada por firma
+- Autenticar usuarios por desafío firmado y emitir JWT con información de rol
+- Registrar nuevos estudiantes con clave pública validada por firma
 - Proteger endpoints según rol (`student` o `admin`)
 - Listar y gestionar productos del marketplace
 - Recibir, almacenar y servir imágenes de productos
 - Procesar compras: validar existencia del producto y emitir transacción SPEND al NCT
 - Emitir puntos a estudiantes desde el panel admin enviando transacciones EARN al NCT
-- Consultar saldo e historial de transacciones del estudiante delegando al NCT
-- Registrar cada compra confirmada en la tabla `purchases`
+- Consultar saldo e historial 
 
 ### 4.3 Endpoints
 
@@ -115,7 +116,7 @@ Python 3.11 con FastAPI. Dependencias principales:
 |---|---|---|
 | `POST` | `/auth/register` | Registrar nuevo estudiante |
 | `POST` | `/auth/login` | Login, devuelve JWT |
-| `GET` | `/auth/challenge` | Desafio actual del servidor para firmar |
+| `GET` | `/auth/challenge` | Desafío de timestamp stateless del servidor para firmar |
 | `POST` | `/auth/logout` | Logout (descarte del token en el cliente) |
 
 > **Nota:** el logout es stateless. El backend no invalida el JWT del lado del servidor; el cliente descarta el token localmente. Esto se documenta como limitación conocida, consistente con el alcance del proyecto.
@@ -130,38 +131,41 @@ Python 3.11 con FastAPI. Dependencias principales:
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| `GET` | `/students/{legajo}/balance` | Saldo confirmado del estudiante |
-| `GET` | `/students/{legajo}/transactions` | Historial de transacciones EARN y SPEND |
+| `GET` | `/students/{legajo}/balance` | Saldo confirmado y nonce actual del estudiante (desde el NCT) |
+| `GET` | `/students/{legajo}/transactions` | Historial de transacciones EARN y SPEND (desde el log local) |
 
 #### Marketplace y productos
 
 | Método | Ruta | Descripción |
 |---|---|---|
 | `GET` | `/products` | Listar productos activos |
-| `GET` | `/products/{id}` | Detalle de un producto |
+| `GET` | `/products/{id}` | Detalle de un producto (incluye `vendor_pubkey`) |
 | `GET` | `/products/{id}/image` | Servir la imagen del producto (devuelve binario con `Content-Type` correcto) |
 
 #### Compras
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| `POST` | `/purchases` | Procesar compra, emite SPEND al NCT y registra en `purchases` |
+| `POST` | `/purchases` | Procesar compra; recibe la transacción SPEND firmada en cliente, la valida y reenvía al NCT |
 | `GET` | `/purchases/me` | Historial de compras del estudiante autenticado |
 
 #### Administración (requieren rol `admin`)
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| `POST` | `/admin/earn` | Emitir puntos a un estudiante, emite EARN al NCT |
+| `POST` | `/admin/earn` | Emitir puntos a un estudiante, firma y emite EARN al NCT |
+| `GET` | `/admin/stats` | Obtener estadísticas del sistema |
 | `GET` | `/admin/products` | Listar todos los productos (activos e inactivos) |
-| `POST` | `/admin/products` | Crear producto; acepta `multipart/form-data` con campos de texto e imagen |
-| `PUT` | `/admin/products/{id}` | Editar producto; acepta `multipart/form-data`, la imagen es opcional |
-| `PATCH` | `/admin/products/{id}/stock` | Modificar únicamente el stock de un producto |
-| `DELETE` | `/admin/products/{id}` | Dar de baja producto (marca `active = FALSE`) |
+| `POST` | `/admin/products` | Crear producto (recibe JSON body) |
+| `PUT` | `/admin/products/{id}` | Editar producto (recibe JSON body) |
+| `DELETE` | `/admin/products/{id}` | Eliminar físicamente un producto |
+| `POST` | `/admin/vendors` | Crear un vendor (genera Ed25519 y descarta la privada inmediatamente) |
+| `GET` | `/admin/vendors` | Listar todos los vendors |
+| `GET` | `/admin/purchases` | Listar las últimas 30 compras del sistema |
 
 ### 4.4 Comunicación con el NCT
 
-El backend actúa como cliente HTTP del NCT. Toda transacción EARN o SPEND se traduce a un `POST` al endpoint correspondiente del NCT. Las consultas de saldo e historial se resuelven con `GET` al NCT y se reenvían al frontend sin transformación significativa.
+El backend actúa como cliente HTTP del NCT. Toda transacción EARN es construida, firmada con la clave privada de la autoridad académica (`ACADEMIC_AUTHORITY_PRIVATE_KEY`) y enviada al NCT. Las transacciones SPEND son construidas y firmadas en el cliente (frontend) y el backend solo las reenvía de forma transparente. Las consultas de saldo y nonce se delegan al NCT, mientras que el historial de transacciones se sirve desde la base de datos local utilizando la tabla cacheada `transactions_log`.
 
 El NCT nunca es contactado directamente por el frontend.
 
@@ -190,9 +194,19 @@ PostgreSQL 15.
 | `legajo` | `VARCHAR(20) UNIQUE NOT NULL` | Legajo universitario del estudiante |
 | `name` | `VARCHAR(100) NOT NULL` | Nombre completo |
 | `email` | `VARCHAR(150) UNIQUE NOT NULL` | Email |
-| `public_key_pem` | `TEXT NOT NULL` | Clave publica ECDSA del usuario en formato PEM |
+| `public_key` | `VARCHAR(64) UNIQUE NOT NULL` | Clave pública Ed25519 (64 caracteres hex) |
+| `password_hash` | `VARCHAR(60) NOT NULL` | Hash bcrypt de la contraseña |
 | `role_id` | `INTEGER REFERENCES roles(id)` | Rol del usuario |
 | `created_at` | `TIMESTAMP DEFAULT NOW()` | Fecha de registro |
+
+#### Tabla `vendors`
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `SERIAL PRIMARY KEY` | Identificador del vendor |
+| `name` | `VARCHAR(100) NOT NULL` | Nombre comercial del vendedor |
+| `public_key` | `VARCHAR(64) UNIQUE NOT NULL` | Clave pública Ed25519 (64 caracteres hex) |
+| `created_at` | `TIMESTAMP DEFAULT NOW()` | Fecha de creación |
 
 #### Tabla `products`
 
@@ -206,6 +220,7 @@ PostgreSQL 15.
 | `active` | `BOOLEAN DEFAULT TRUE` | Visible en el marketplace |
 | `image_data` | `BYTEA` | Binario de la imagen del producto (`NULL` si no se cargó imagen) |
 | `image_mime_type` | `VARCHAR(50)` | Tipo MIME de la imagen (ej: `image/jpeg`, `image/png`) |
+| `vendor_id` | `INTEGER REFERENCES vendors(id)` | Referencia al vendedor del producto |
 | `created_at` | `TIMESTAMP DEFAULT NOW()` | Fecha de creación |
 
 > **Almacenamiento de imágenes:** la imagen se guarda directamente en PostgreSQL como `BYTEA`. El endpoint `GET /products/{id}/image` lee el binario y lo sirve con el header `Content-Type` correspondiente al valor de `image_mime_type`. Este enfoque mantiene toda la información del producto en un único sistema de persistencia, eliminando la necesidad de un volumen de archivos separado y simplificando el backup del sistema. Para imágenes grandes o alta concurrencia en producción, se reemplazaría por un bucket en Google Cloud Storage.
@@ -222,6 +237,19 @@ PostgreSQL 15.
 | `nct_transaction_id` | `VARCHAR(100)` | ID de la transacción SPEND confirmada en el NCT |
 
 > **`nct_transaction_id`** es la columna clave para auditoría: permite cruzar cada compra registrada en PostgreSQL con su transacción SPEND correspondiente en la blockchain.
+
+#### Tabla `transactions_log`
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `SERIAL PRIMARY KEY` | Identificador |
+| `user_id` | `INTEGER REFERENCES users(id)` | Estudiante relacionado |
+| `tx_type` | `VARCHAR(10) NOT NULL` | Tipo de transacción (`EARN` o `SPEND`) |
+| `counterparty_pubkey` | `VARCHAR(64) NOT NULL` | Clave pública de la contraparte (vendedor en SPEND, autoridad en EARN) |
+| `amount` | `INTEGER NOT NULL` | Monto de la transacción |
+| `concept` | `VARCHAR(128) NOT NULL` | Concepto de la transacción |
+| `nct_tx_id` | `VARCHAR(100)` | ID de la transacción confirmada en el NCT |
+| `created_at` | `TIMESTAMP DEFAULT NOW()` | Fecha de registro |
 
 ### 5.3 Fuente de verdad
 
@@ -241,6 +269,7 @@ El proyecto define tres servicios en Docker Compose:
 
 ## Notas de cambios
 
+- 2026-06-19: Migración a firmas criptográficas Ed25519 (hexadecimal de 64 caracteres) para compatibilidad nativa con la blockchain del NCT. Cifrado local de clave privada de estudiantes (AES-GCM/PBKDF2) y almacenamiento en `localStorage`. Creación de entidad `vendors` y del registro local de transacciones (`transactions_log`).
 - 2026-06-09: Se añadió el router `students` con endpoints `GET /students/{legajo}/balance` y `GET /students/{legajo}/transactions` para que el frontend consulte saldo e historial a través del backend.
 - 2026-06-09: Corregido el problema de redirección 307 en `GET /products` (acepta la ruta sin slash), lo que solucionó fallos de carga en el `marketplace` desde el frontend detrás de proxies.
 
@@ -354,6 +383,9 @@ proyecto/
 │   │   └── styles.css
 │   └── js/
 │       ├── auth.js
+│       ├── crypto-auth.js
+│       ├── wallet-crypto.js
+│       ├── tx-signer.js
 │       ├── marketplace.js
 │       ├── home.js
 │       ├── purchase.js
@@ -367,7 +399,8 @@ proyecto/
 │   │   ├── users.py
 │   │   ├── products.py
 │   │   ├── purchases.py
-│   │   └── admin.py
+│   │   ├── admin.py
+│   │   └── students.py
 │   ├── models/
 │   │   └── models.py
 │   ├── schemas/
@@ -376,6 +409,7 @@ proyecto/
 │   │   └── nct_client.py
 │   └── core/
 │       ├── config.py
+│       ├── crypto.py
 │       ├── database.py
 │       └── security.py
 └── db/
@@ -410,7 +444,7 @@ La documentación interactiva de la API queda disponible en `http://localhost:80
 Las siguientes son limitaciones conocidas, aceptadas por el alcance universitario del proyecto y documentadas para el informe:
 
 - **JWT stateless:** el logout no invalida el token del lado del servidor. En producción se usaría una lista negra de tokens en Redis o sesiones con estado.
-- **Sin autenticación del emisor EARN:** cualquier request con `sender = "ACADEMIC_SYSTEM"` es aceptado por el NCT. En producción se requeriría firma ECDSA por transacción.
+- **Almacenamiento de clave privada en localStorage (cifrado):** Aunque la clave privada Ed25519 del estudiante ahora se almacena cifrada mediante AES-GCM (derivando la clave con PBKDF2) utilizando la contraseña del estudiante, el almacenamiento en `localStorage` sigue expuesto a posibles ataques de Cross-Site Scripting (XSS). En producción se aconseja utilizar la WebCrypto API con claves no-extraíbles o billeteras externas.
 - **Credenciales en variables de entorno:** el `docker-compose.yml` incluye credenciales en texto plano. En producción se utilizarían secrets de Kubernetes o un gestor de secretos dedicado.
 - **Sin HTTPS:** el setup de Docker local no configura TLS. En el despliegue en Google Cloud se gestionaría mediante un Ingress con certificado administrado.
 - **Imágenes almacenadas como BYTEA:** no se valida el contenido del archivo más allá del MIME type declarado por el cliente. En producción se agregaría validación del magic number del archivo y un límite de tamaño estricto en el backend.
