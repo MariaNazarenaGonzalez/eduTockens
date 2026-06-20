@@ -1,367 +1,45 @@
-// TODO: Implement admin page JavaScript for point issuance and product management actions.
+/* DEO GLORIA */
 
+// admin.js — Panel de administración: estadísticas, emisión de puntos,
+// gestión de productos y vendors, logs de compras.
+//
+// EARN no se firma client-side: el admin no posee (ni necesita) la clave
+// privada de ACADEMIC_SYSTEM — esa vive únicamente en el backend
+// (env/secret). El admin solo manda { legajo, amount, concept } y el
+// backend arma y firma la transacción EARN completa.
+
+requireAuth();
 requireAdmin();
 
 const API_BASE_URL = '/api';
 
-/**
- * Inicializar panel admin
- */
-async function initAdmin() {
-  await loadStats();
-  await loadProducts();
+function getToken() {
+  return localStorage.getItem('token');
 }
 
-/**
- * Cargar estadísticas
- */
-async function loadStats() {
-  try {
-    const token = getToken();
+function getUserRole() {
+  return localStorage.getItem('role');
+}
 
-    const response = await fetch(`${API_BASE_URL}/admin/stats`, {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
-
-    if (response.ok) {
-      const stats = await response.json();
-      document.getElementById('stat-students').textContent = stats.students || 0;
-      document.getElementById('stat-transactions').textContent = stats.transactions || 0;
-      document.getElementById('stat-blocks').textContent = stats.blocks || 0;
-      document.getElementById('stat-supply').textContent = stats.total_supply || 0;
-    }
-  } catch (error) {
-    console.error('Error loading stats:', error);
+function requireAuth() {
+  if (!getToken()) {
+    window.location.href = 'login.html';
   }
 }
 
-/**
- * Cambiar tab
- */
-function switchTab(tab) {
-  const emitSection = document.getElementById('emit-section');
-  const productsSection = document.getElementById('products-section');
-  const logsSection = document.getElementById('logs-section');
-  const emitTab = document.getElementById('tab-emit');
-  const productsTab = document.getElementById('tab-products');
-  const logsTab = document.getElementById('tab-logs');
-
-  if (tab === 'emit') {
-    emitSection.style.display = 'block';
-    productsSection.style.display = 'none';
-    if (logsSection) logsSection.style.display = 'none';
-
-    emitTab.style.color = 'var(--primary)';
-    emitTab.style.borderBottomColor = 'var(--primary)';
-    productsTab.style.color = 'var(--text-muted)';
-    productsTab.style.borderBottomColor = 'transparent';
-    if (logsTab) {
-      logsTab.style.color = 'var(--text-muted)';
-      logsTab.style.borderBottomColor = 'transparent';
-    }
-  } else if (tab === 'products') {
-    emitSection.style.display = 'none';
-    productsSection.style.display = 'block';
-    if (logsSection) logsSection.style.display = 'none';
-
-    emitTab.style.color = 'var(--text-muted)';
-    emitTab.style.borderBottomColor = 'transparent';
-    productsTab.style.color = 'var(--primary)';
-    productsTab.style.borderBottomColor = 'var(--primary)';
-    if (logsTab) {
-      logsTab.style.color = 'var(--text-muted)';
-      logsTab.style.borderBottomColor = 'transparent';
-    }
-  } else if (tab === 'logs') {
-    emitSection.style.display = 'none';
-    productsSection.style.display = 'none';
-    if (logsSection) logsSection.style.display = 'block';
-
-    emitTab.style.color = 'var(--text-muted)';
-    emitTab.style.borderBottomColor = 'transparent';
-    productsTab.style.color = 'var(--text-muted)';
-    productsTab.style.borderBottomColor = 'transparent';
-    if (logsTab) {
-      logsTab.style.color = 'var(--primary)';
-      logsTab.style.borderBottomColor = 'var(--primary)';
-    }
+function requireAdmin() {
+  if (getUserRole() !== 'admin') {
+    window.location.href = 'home.html';
   }
 }
 
-/**
- * Emitir puntos a estudiante
- */
-async function emitPoints() {
-  const legajo = document.getElementById('emit-legajo').value;
-  const amount = parseInt(document.getElementById('emit-amount').value);
-  const concept = document.getElementById('emit-concept').value;
-  const errorEl = document.getElementById('error-msg');
-
-  if (!legajo || !amount || !concept) {
-    errorEl.textContent = 'Por favor completa todos los campos';
-    errorEl.classList.add('show');
-    setTimeout(() => errorEl.classList.remove('show'), 3000);
-    return;
-  }
-
-  try {
-    const token = getToken();
-    const response = await fetch(`${API_BASE_URL}/admin/earn`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
-      },
-      body: JSON.stringify({ legajo, amount, concept })
-    });
-
-    if (response.ok) {
-      alert('Puntos emitidos correctamente');
-      document.getElementById('emit-legajo').value = '';
-      document.getElementById('emit-amount').value = '';
-      document.getElementById('emit-concept').value = '';
-      await loadStats();
-    } else {
-      const error = await response.json();
-      throw new Error(error.detail || 'Error al emitir puntos');
-    }
-  } catch (error) {
-    errorEl.textContent = error.message;
-    errorEl.classList.add('show');
-    setTimeout(() => errorEl.classList.remove('show'), 3000);
-  }
+function authHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    Authorization: 'Bearer ' + getToken(),
+  };
 }
 
-/**
- * Cargar productos
- */
-async function loadProducts() {
-  try {
-    const token = getToken();
-
-    const response = await fetch(`${API_BASE_URL}/admin/products`, {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
-
-    if (response.ok) {
-      const products = await response.json();
-      renderProductsTable(products);
-    }
-  } catch (error) {
-    console.error('Error loading products:', error);
-  }
-}
-
-/**
- * Renderizar tabla de productos
- */
-function renderProductsTable(products) {
-  const tbody = document.getElementById('products-tbody');
-
-  if (!products || products.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 16px; color: var(--text-muted);">Sin productos</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = products.map(product => `
-    <tr>
-      <td>${product.name}</td>
-      <td>${product.price_points} pts</td>
-      <td>${product.stock || '∞'}</td>
-      <td>
-        <button style="color: var(--primary); background: none; border: none; cursor: pointer; font-size: 11px; font-weight: 500;" onclick="editProduct(${product.id})">Editar</button>
-        <span style="margin: 0 4px; color: var(--border);">·</span>
-        <button style="color: var(--error); background: none; border: none; cursor: pointer; font-size: 11px; font-weight: 500;" onclick="deleteProduct(${product.id})">Eliminar</button>
-      </td>
-    </tr>
-  `).join('');
-}
-
-/**
- * Editar producto
- */
-function editProduct(productId) {
-  alert('Editar producto: ' + productId);
-  // TODO: Implementar modal de edición
-}
-
-/**
- * Eliminar producto
- */
-async function deleteProduct(productId) {
-  if (!confirm('¿Estás seguro de que quieres eliminar este producto?')) {
-    return;
-  }
-
-  try {
-    const token = getToken();
-    const response = await fetch(`${API_BASE_URL}/admin/products/${productId}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
-
-    if (response.ok) {
-      alert('Producto eliminado');
-      await loadProducts();
-    }
-  } catch (error) {
-    console.error('Error deleting product:', error);
-  }
-}
-
-/**
- * Mostrar formulario de creación de producto
- */
-function showCreateProduct() {
-  const overlay = document.createElement('div');
-  overlay.style.position = 'fixed';
-  overlay.style.top = '0';
-  overlay.style.left = '0';
-  overlay.style.width = '100%';
-  overlay.style.height = '100%';
-  overlay.style.background = 'rgba(0,0,0,0.5)';
-  overlay.style.zIndex = '1000';
-  overlay.style.display = 'flex';
-  overlay.style.alignItems = 'center';
-  overlay.style.justifyContent = 'center';
-
-  const card = document.createElement('div');
-  card.className = 'card';
-  card.style.padding = '20px';
-  card.style.width = '90%';
-  card.style.maxWidth = '400px';
-  card.style.maxHeight = '80vh';
-  card.style.overflowY = 'auto';
-
-  card.innerHTML = `
-    <h3 style="margin-top:0; margin-bottom: 16px;">Crear Producto</h3>
-    <form id="create-product-form" enctype="multipart/form-data">
-      <div class="input-group">
-        <label class="input-label" for="prod-name">Nombre</label>
-        <input class="input" type="text" id="prod-name" name="name" required>
-      </div>
-      <div class="input-group">
-        <label class="input-label" for="prod-desc">Descripción</label>
-        <textarea class="input" id="prod-desc" name="description" rows="3" style="resize: vertical;"></textarea>
-      </div>
-      <div class="input-group">
-        <label class="input-label" for="prod-price">Puntos</label>
-        <input class="input" type="number" id="prod-price" name="price_points" min="1" required>
-      </div>
-      <div class="input-group">
-        <label class="input-label" for="prod-stock">Stock (vacío = ilimitado)</label>
-        <input class="input" type="number" id="prod-stock" name="stock">
-      </div>
-      <div class="input-group">
-        <label class="input-label" for="prod-image">Imagen</label>
-        <input class="input" type="file" id="prod-image" name="image" accept="image/*">
-      </div>
-      <p id="prod-error" style="color: var(--error); margin-bottom: 16px; display: none; font-size: 14px;"></p>
-      <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-        <button type="button" class="btn btn-outline" id="btn-cancel-prod">Cancelar</button>
-        <button type="submit" class="btn btn-primary">Guardar</button>
-      </div>
-    </form>
-  `;
-
-  overlay.appendChild(card);
-  document.body.appendChild(overlay);
-
-  document.getElementById('btn-cancel-prod').addEventListener('click', () => {
-    document.body.removeChild(overlay);
-  });
-
-  document.getElementById('create-product-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const form = e.target;
-    const formData = new FormData(form);
-
-    const errorEl = document.getElementById('prod-error');
-    errorEl.style.display = 'none';
-
-    try {
-      const token = getToken();
-      const response = await fetch(`${API_BASE_URL}/admin/products`, {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + token
-        },
-        body: formData
-      });
-
-      if (response.ok) {
-        document.body.removeChild(overlay);
-        alert('Producto creado');
-        await loadProducts();
-      } else {
-        const error = await response.json();
-        errorEl.textContent = error.detail || 'Error al crear producto';
-        errorEl.style.display = 'block';
-      }
-    } catch (err) {
-      errorEl.textContent = err.message || 'Error de red';
-      errorEl.style.display = 'block';
-    }
-  });
-}
-
-/**
- * Mostrar formulario de emisión
- */
-function showEarnForm() {
-  switchTab('emit');
-}
-
-/**
- * Mostrar productos
- */
-function showProducts() {
-  switchTab('products');
-}
-
-/**
- * Mostrar logs
- */
-async function showLogs() {
-  switchTab('logs');
-  const tbody = document.getElementById('logs-tbody');
-  tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 16px; color: var(--text-muted);">Cargando...</td></tr>';
-
-  try {
-    const token = getToken();
-    const response = await fetch(`${API_BASE_URL}/admin/logs`, {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
-
-    if (response.ok) {
-      const logs = await response.json();
-      if (!logs || logs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 16px; color: var(--text-muted);">Sin registros</td></tr>';
-        return;
-      }
-
-      tbody.innerHTML = logs.map(log => `
-        <tr>
-          <td>${log.id}</td>
-          <td>${log.user_id}</td>
-          <td>${log.product_id}</td>
-          <td>${log.points_spent}</td>
-          <td>${log.nct_transaction_id || '-'}</td>
-          <td>${new Date(log.created_at).toLocaleString()}</td>
-        </tr>
-      `).join('');
-    } else {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 16px; color: var(--error);">Error al cargar logs</td></tr>';
-    }
-  } catch (error) {
-    console.error('Error loading logs:', error);
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 16px; color: var(--error);">Error de conexión</td></tr>';
-  }
-}
-
-/**
- * Logout
- */
 function logout() {
   localStorage.removeItem('token');
   localStorage.removeItem('role');
@@ -369,20 +47,325 @@ function logout() {
   window.location.href = 'login.html';
 }
 
-// Funciones de autenticación
-function getToken() {
-  return localStorage.getItem('token');
-}
-
-function requireAdmin() {
-  if (localStorage.getItem('role') !== 'admin') {
-    window.location.href = 'home.html';
-  }
-}
-
 function goTo(path) {
   window.location.href = path;
 }
 
-// Inicializar al cargar
-window.addEventListener('DOMContentLoaded', initAdmin);
+function showMessage(elId, message, isError) {
+  const el = document.getElementById(elId);
+  el.textContent = message;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), isError ? 4000 : 3000);
+}
+
+// ---------------------------------------------------------------------------
+// Tabs
+// ---------------------------------------------------------------------------
+
+const TABS = ['emit', 'products', 'vendors', 'logs'];
+
+function switchTab(tab) {
+  TABS.forEach((t) => {
+    document.getElementById(`${t}-section`).style.display = t === tab ? 'block' : 'none';
+    const tabBtn = document.getElementById(`tab-${t}`);
+    if (t === tab) {
+      tabBtn.style.color = 'var(--primary)';
+      tabBtn.style.borderBottom = '2px solid var(--primary)';
+    } else {
+      tabBtn.style.color = 'var(--text-muted)';
+      tabBtn.style.borderBottom = '2px solid transparent';
+    }
+  });
+
+  if (tab === 'products') loadProducts();
+  if (tab === 'vendors') loadVendors();
+  if (tab === 'logs') loadLogs();
+}
+
+// ---------------------------------------------------------------------------
+// Stats
+// ---------------------------------------------------------------------------
+
+async function loadStats() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/admin/stats`, { headers: authHeaders() });
+    if (!response.ok) throw new Error('No se pudieron cargar las estadísticas');
+
+    const stats = await response.json();
+    document.getElementById('stat-students').textContent = stats.total_students;
+    document.getElementById('stat-vendors').textContent = stats.total_vendors;
+    document.getElementById('stat-products').textContent = stats.total_products;
+    document.getElementById('stat-supply').textContent = stats.total_points_spent;
+  } catch (error) {
+    console.error('Error loading stats:', error);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// EARN
+// ---------------------------------------------------------------------------
+
+async function emitPoints() {
+  const legajo = document.getElementById('emit-legajo').value.trim();
+  const amountStr = document.getElementById('emit-amount').value;
+  const concept = document.getElementById('emit-concept').value.trim();
+
+  if (!legajo || !amountStr || !concept) {
+    showMessage('error-msg', 'Completá todos los campos', true);
+    return;
+  }
+
+  const amount = parseInt(amountStr, 10);
+  if (!Number.isInteger(amount) || amount <= 0) {
+    showMessage('error-msg', 'La cantidad de puntos debe ser un entero positivo', true);
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/admin/earn`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ legajo, amount, concept }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Error al emitir puntos');
+
+    showMessage('success-msg', `Puntos emitidos. TX: ${data.tx_id}`, false);
+    document.getElementById('emit-legajo').value = '';
+    document.getElementById('emit-amount').value = '';
+    document.getElementById('emit-concept').value = '';
+    loadStats();
+  } catch (error) {
+    showMessage('error-msg', error.message, true);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Vendors
+// ---------------------------------------------------------------------------
+
+async function loadVendors() {
+  const tbody = document.getElementById('vendors-tbody');
+  try {
+    const response = await fetch(`${API_BASE_URL}/admin/vendors`, { headers: authHeaders() });
+    if (!response.ok) throw new Error('No se pudieron cargar los vendors');
+
+    const vendors = await response.json();
+    renderVendors(vendors);
+    populateVendorSelect(vendors);
+  } catch (error) {
+    tbody.innerHTML = `<tr><td colspan="2" style="text-align:center; padding:16px; color:var(--error);">${error.message}</td></tr>`;
+  }
+}
+
+function renderVendors(vendors) {
+  const tbody = document.getElementById('vendors-tbody');
+  if (!vendors || vendors.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:16px; color:var(--text-muted);">Sin vendors</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = vendors.map((v) => `
+    <tr>
+      <td>${v.name}</td>
+      <td class="mono" style="font-size: 10px; word-break: break-all;">${v.public_key}</td>
+    </tr>
+  `).join('');
+}
+
+function populateVendorSelect(vendors) {
+  const select = document.getElementById('product-vendor');
+  if (!select) return;
+
+  const currentValue = select.value;
+  select.innerHTML = '<option value="">Seleccionar vendor...</option>' +
+    vendors.map((v) => `<option value="${v.id}">${v.name}</option>`).join('');
+  select.value = currentValue;
+}
+
+async function submitCreateVendor() {
+  const name = document.getElementById('vendor-name').value.trim();
+  if (!name) {
+    showMessage('error-msg', 'Ingresá un nombre para el vendor', true);
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/admin/vendors`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ name }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Error al crear el vendor');
+
+    showMessage('success-msg', `Vendor "${data.name}" creado`, false);
+    document.getElementById('vendor-name').value = '';
+    loadVendors();
+    loadStats();
+  } catch (error) {
+    showMessage('error-msg', error.message, true);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Productos
+// ---------------------------------------------------------------------------
+
+function showCreateProduct() {
+  const form = document.getElementById('create-product-form');
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  if (form.style.display === 'block') {
+    loadVendors(); // asegura que el select de vendors esté actualizado
+  }
+}
+
+async function loadProducts() {
+  const tbody = document.getElementById('products-tbody');
+  try {
+    const response = await fetch(`${API_BASE_URL}/admin/products`, { headers: authHeaders() });
+    if (!response.ok) throw new Error('No se pudieron cargar los productos');
+
+    const products = await response.json();
+    renderProductsTable(products);
+  } catch (error) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:16px; color:var(--error);">${error.message}</td></tr>`;
+  }
+}
+
+function renderProductsTable(products) {
+  const tbody = document.getElementById('products-tbody');
+  if (!products || products.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:16px; color:var(--text-muted);">Sin productos</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = products.map((p) => `
+    <tr>
+      <td>${p.name}</td>
+      <td>${p.price_points} pts</td>
+      <td>${p.stock === null || p.stock === undefined ? '∞' : p.stock}</td>
+      <td>${p.vendor_id ?? '—'}</td>
+      <td>
+        <button class="btn btn-outline btn-sm" style="margin: 0;" onclick="deleteProductAction(${p.id})">🗑️</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function submitCreateProduct() {
+  const name = document.getElementById('product-name').value.trim();
+  const description = document.getElementById('product-description').value.trim();
+  const priceStr = document.getElementById('product-price').value;
+  const stockStr = document.getElementById('product-stock').value;
+  const vendorId = document.getElementById('product-vendor').value;
+
+  if (!name || !priceStr || !vendorId) {
+    showMessage('error-msg', 'Completá nombre, precio y vendor', true);
+    return;
+  }
+
+  const price_points = parseInt(priceStr, 10);
+  if (!Number.isInteger(price_points) || price_points <= 0) {
+    showMessage('error-msg', 'El precio debe ser un entero positivo', true);
+    return;
+  }
+
+  const payload = {
+    name,
+    description: description || null,
+    price_points,
+    stock: stockStr ? parseInt(stockStr, 10) : null,
+    vendor_id: parseInt(vendorId, 10),
+  };
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/admin/products`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Error al crear el producto');
+
+    showMessage('success-msg', `Producto "${data.name}" creado`, false);
+    document.getElementById('product-name').value = '';
+    document.getElementById('product-description').value = '';
+    document.getElementById('product-price').value = '';
+    document.getElementById('product-stock').value = '';
+    document.getElementById('create-product-form').style.display = 'none';
+    loadProducts();
+    loadStats();
+  } catch (error) {
+    showMessage('error-msg', error.message, true);
+  }
+}
+
+async function deleteProductAction(productId) {
+  if (!window.confirm('¿Eliminar este producto?')) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/admin/products/${productId}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+
+    if (!response.ok && response.status !== 204) {
+      const data = await response.json();
+      throw new Error(data.detail || 'Error al eliminar el producto');
+    }
+
+    showMessage('success-msg', 'Producto eliminado', false);
+    loadProducts();
+    loadStats();
+  } catch (error) {
+    showMessage('error-msg', error.message, true);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Logs (compras de todos los estudiantes)
+// ---------------------------------------------------------------------------
+
+async function loadLogs() {
+  const tbody = document.getElementById('logs-tbody');
+  try {
+    const response = await fetch(`${API_BASE_URL}/admin/purchases`, { headers: authHeaders() });
+    if (!response.ok) throw new Error('No se pudieron cargar los logs');
+
+    const logs = await response.json();
+    renderLogsTable(logs);
+  } catch (error) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:16px; color:var(--error);">${error.message}</td></tr>`;
+  }
+}
+
+function renderLogsTable(logs) {
+  const tbody = document.getElementById('logs-tbody');
+  if (!logs || logs.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:16px; color:var(--text-muted);">Sin compras registradas</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = logs.map((log) => `
+    <tr>
+      <td>${log.id}</td>
+      <td>${log.product_name}</td>
+      <td>${log.points_spent} pts</td>
+      <td class="mono" style="font-size: 10px;">${log.nct_transaction_id || '—'}</td>
+      <td>${new Date(log.purchased_at).toLocaleString('es-AR')}</td>
+    </tr>
+  `).join('');
+}
+
+// ---------------------------------------------------------------------------
+// Init
+// ---------------------------------------------------------------------------
+
+window.addEventListener('DOMContentLoaded', () => {
+  loadStats();
+  loadVendors(); // para poblar el <select> de productos desde el arranque
+});

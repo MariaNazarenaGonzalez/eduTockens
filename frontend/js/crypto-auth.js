@@ -1,111 +1,130 @@
+/* DEO GLORIA */
+
+// crypto-auth.js — Generación de claves y firma Ed25519 para eduTockens.
+//
+// Migración: ECDSA P-384 (Web Crypto API, claves PEM/DER) → Ed25519
+// (@noble/curves, claves hex), para ser compatible con el NCT
+// (ver infoIntegracionPilar2conEduTockens.txt y shared/block.py / shared/crypto.py).
+//
+// Script clásico (NO ES module) — se carga con <script src="../js/crypto-auth.js">,
+// igual que el resto del proyecto. @noble/curves se importa dinámicamente
+// desde un CDN ESM dentro de un wrapper async, así no se rompe la carga
+// síncrona de <script> clásico.
+//
+// Todas las claves y firmas se manejan como strings hex lowercase:
+//   - public key:  64 hex chars (32 bytes)
+//   - private key: 64 hex chars (32 bytes)
+//   - signature:   128 hex chars (64 bytes)
+
+const NOBLE_ED25519_CDN_URL = 'https://esm.sh/@noble/curves@1.7.0/ed25519';
+
+// Cache del módulo importado dinámicamente, para no re-pedirlo al CDN en
+// cada llamada a generar/firmar.
+let _ed25519ModulePromise = null;
+
+function _loadEd25519() {
+  if (!_ed25519ModulePromise) {
+    _ed25519ModulePromise = import(NOBLE_ED25519_CDN_URL).then((mod) => mod.ed25519);
+  }
+  return _ed25519ModulePromise;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers hex <-> bytes
+// ---------------------------------------------------------------------------
+
+function bytesToHex(bytes) {
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function hexToBytes(hex) {
+  const clean = hex.trim().toLowerCase();
+  const bytes = new Uint8Array(clean.length / 2);
+  for (let i = 0; i < clean.length; i += 2) {
+    bytes[i / 2] = parseInt(clean.substring(i, i + 2), 16);
+  }
+  return bytes;
+}
+
+// ---------------------------------------------------------------------------
+// Generación de claves
+// ---------------------------------------------------------------------------
+
+/**
+ * Genera un par de claves Ed25519 nuevo.
+ * @returns {Promise<{ privateKeyHex: string, publicKeyHex: string }>}
+ */
+async function generateEd25519KeyPairHex() {
+  const ed25519 = await _loadEd25519();
+  const privateKey = ed25519.utils.randomPrivateKey(); // Uint8Array(32)
+  const publicKey = ed25519.getPublicKey(privateKey); // Uint8Array(32)
+
+  return {
+    privateKeyHex: bytesToHex(privateKey),
+    publicKeyHex: bytesToHex(publicKey),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Obtener el challenge del servidor
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /api/auth/challenge → el timestamp actual del servidor (segundos,
+ * entero) como string. NO se persiste en el servidor — la validez se
+ * controla por ventana de tiempo en el momento de /login o /register.
+ *
+ * @returns {Promise<string>} el challenge, tal cual hay que devolverlo firmado
+ */
 async function fetchAuthChallenge() {
   const response = await fetch('/api/auth/challenge');
   if (!response.ok) {
-    throw new Error('No se pudo obtener el desafio del servidor');
+    throw new Error('No se pudo obtener el desafío del servidor');
   }
 
   const data = await response.json();
   return data.challenge;
 }
 
-function arrayBufferToBase64(buffer) {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  bytes.forEach(byte => {
-    binary += String.fromCharCode(byte);
-  });
-  return window.btoa(binary);
+// ---------------------------------------------------------------------------
+// Firma del challenge
+// ---------------------------------------------------------------------------
+
+/**
+ * Firma el challenge (string, tal cual fue recibido del servidor — SIN
+ * transformarlo) con la clave privada Ed25519 del usuario (hex).
+ *
+ * IMPORTANTE: se firma el string exacto, codificado a UTF-8 — igual que
+ * el NCT hace con tx_id.encode() en Python. No reformatear el challenge
+ * antes de firmar.
+ *
+ * @param {string} privateKeyHex - 64 hex chars
+ * @param {string} challenge - el string devuelto por fetchAuthChallenge()
+ * @returns {Promise<string>} la firma, 128 hex chars
+ */
+async function signChallengeWithPrivateKey(privateKeyHex, challenge) {
+  const ed25519 = await _loadEd25519();
+  const privateKeyBytes = hexToBytes(privateKeyHex);
+  const challengeBytes = new TextEncoder().encode(challenge);
+  const signature = ed25519.sign(challengeBytes, privateKeyBytes);
+  return bytesToHex(signature);
 }
 
-function base64ToArrayBuffer(base64) {
-  const binary = window.atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes.buffer;
-}
-
-function pemToArrayBuffer(pem) {
-  const base64 = pem
-    .replace(/-----BEGIN [^-]+-----/g, '')
-    .replace(/-----END [^-]+-----/g, '')
-    .replace(/\s/g, '');
-  return base64ToArrayBuffer(base64);
-}
-
-function arrayBufferToPem(buffer, label) {
-  let base64 = arrayBufferToBase64(buffer);
-  const lines = [];
-  while (base64.length > 0) {
-    lines.push(base64.substring(0, 64));
-    base64 = base64.substring(64);
-  }
-  return `-----BEGIN ${label}-----\n${lines.join('\n')}\n-----END ${label}-----`;
-}
-
-function bytesToHex(bytes) {
-  return Array.from(bytes)
-    .map(byte => byte.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-function derLength(hex) {
-  return (hex.length / 2).toString(16).padStart(2, '0');
-}
-
-function trimIntegerHex(hex) {
-  while (hex.startsWith('00') && hex.length > 2) {
-    hex = hex.substring(2);
-  }
-
-  if (parseInt(hex.substring(0, 2), 16) > 127) {
-    hex = `00${hex}`;
-  }
-
-  return hex;
-}
-
-function ecdsaRawSignatureToDer(signature) {
-  const signHex = bytesToHex(new Uint8Array(signature));
-  const coordinateLength = signHex.length / 2;
-  const r = trimIntegerHex(signHex.substring(0, coordinateLength));
-  const s = trimIntegerHex(signHex.substring(coordinateLength));
-  const payload = `02${derLength(r)}${r}02${derLength(s)}${s}`;
-  return `30${derLength(payload)}${payload}`;
-}
-
-async function generateEcdsaKeyPairPem() {
-  const keypair = await window.crypto.subtle.generateKey(
-    { name: 'ECDSA', namedCurve: 'P-384' },
-    true,
-    ['sign', 'verify']
-  );
-
-  const publicKey = await window.crypto.subtle.exportKey('spki', keypair.publicKey);
-  const privateKey = await window.crypto.subtle.exportKey('pkcs8', keypair.privateKey);
-
-  return {
-    publicKeyPem: arrayBufferToPem(publicKey, 'PUBLIC KEY'),
-    privateKeyPem: arrayBufferToPem(privateKey, 'PRIVATE KEY'),
-  };
-}
-
-async function signChallengeWithPrivateKey(privateKeyPem, challenge) {
-  const privateKey = await window.crypto.subtle.importKey(
-    'pkcs8',
-    pemToArrayBuffer(privateKeyPem),
-    { name: 'ECDSA', namedCurve: 'P-384' },
-    false,
-    ['sign']
-  );
-
-  const encodedChallenge = new TextEncoder().encode(challenge);
-  const signature = await window.crypto.subtle.sign(
-    { name: 'ECDSA', hash: { name: 'SHA-1' } },
-    privateKey,
-    encodedChallenge
-  );
-
-  return ecdsaRawSignatureToDer(signature);
+/**
+ * Verificación local opcional (debugging) — NO reemplaza la verificación
+ * del servidor, que es la autoritativa.
+ *
+ * @param {string} publicKeyHex - 64 hex chars
+ * @param {string} challenge
+ * @param {string} signatureHex - 128 hex chars
+ * @returns {Promise<boolean>}
+ */
+async function verifyChallengeSignature(publicKeyHex, challenge, signatureHex) {
+  const ed25519 = await _loadEd25519();
+  const publicKeyBytes = hexToBytes(publicKeyHex);
+  const challengeBytes = new TextEncoder().encode(challenge);
+  const signatureBytes = hexToBytes(signatureHex);
+  return ed25519.verify(signatureBytes, challengeBytes, publicKeyBytes);
 }

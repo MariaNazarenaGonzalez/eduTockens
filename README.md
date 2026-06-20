@@ -166,7 +166,7 @@ El archivo `docker-compose.yml` configura automáticamente estos valores para de
 ## Roadmap
 
 - [ ] Integración con NCT para consultas en tiempo real
-- [ ] Modal de creación/edición de productos
+- [x] Modal de creación/edición de productos
 - [ ] Página de logs con filtros
 - [ ] Visualización de blockchain (historial de bloques)
 - [ ] Notificaciones push

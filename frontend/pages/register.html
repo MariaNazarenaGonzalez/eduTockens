@@ -1,16 +1,20 @@
 <!DOCTYPE html>
 <html lang="es">
+<!-- DEO GLORIA -->
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Registro - EduTokens</title>
   <link rel="stylesheet" href="../css/styles.css">
 </head>
+
 <body>
   <div class="app">
     <div class="screen active" style="padding: 0; display: flex; flex-direction: column;">
       <div style="background: linear-gradient(135deg, #5B5BF7 0%, #7C3AED 100%); color: white; padding: 40px 30px;">
-        <a href="../index.html" style="color: white; text-decoration: none; font-size: 14px; display: flex; align-items: center; gap: 6px; margin-bottom: 16px;">
+        <a href="../index.html"
+          style="color: white; text-decoration: none; font-size: 14px; display: flex; align-items: center; gap: 6px; margin-bottom: 16px;">
           ← Volver
         </a>
         <h1 style="font-size: 28px; font-weight: 700;">Crear Cuenta</h1>
@@ -37,8 +41,17 @@
         </div>
 
         <div class="input-group">
-          <label class="input-label">Clave pública</label>
-          <textarea id="reg-public-key" class="input" rows="6" placeholder="-----BEGIN PUBLIC KEY-----"></textarea>
+          <label class="input-label">Contraseña</label>
+          <input type="password" id="reg-password" class="input" placeholder="Mínimo 8 caracteres" minlength="8">
+          <p style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+            Esta contraseña se usa para autenticarte Y para cifrar tu clave privada en este navegador. No se puede
+            recuperar — si la olvidás, vas a necesitar tu clave privada para volver a generar el cifrado local.
+          </p>
+        </div>
+
+        <div class="input-group">
+          <label class="input-label">Clave pública (Ed25519, 64 caracteres hex)</label>
+          <input type="text" id="reg-public-key" class="input mono" placeholder="64 caracteres hex" maxlength="64">
         </div>
 
         <div class="input-group">
@@ -48,27 +61,35 @@
 
         <div class="input-group">
           <label class="input-label">Desafío firmado con clave privada</label>
-          <textarea id="reg-signature" class="input" rows="4" placeholder="Firma hexadecimal del desafío"></textarea>
+          <textarea id="reg-signature" class="input mono" rows="3"
+            placeholder="Firma hexadecimal del desafío (128 caracteres)"></textarea>
         </div>
 
         <div class="input-group">
-          <label class="input-label">Clave privada (opcional para firmar aquí)</label>
-          <textarea id="reg-private-key" class="input" rows="6" placeholder="-----BEGIN PRIVATE KEY-----"></textarea>
+          <label class="input-label">Clave privada (Ed25519, 64 caracteres hex)</label>
+          <input type="text" id="reg-private-key" class="input mono"
+            placeholder="64 caracteres hex — no se envía al servidor" maxlength="64">
         </div>
 
-        <button class="btn btn-secondary" style="width: 100%; margin-top: 12px;" onclick="generateRegisterKeys()">Generar claves</button>
-        <button class="btn btn-secondary" style="width: 100%; margin-top: 12px;" onclick="signRegisterChallenge()">Firmar desafío</button>
-        <button class="btn btn-primary" style="width: 100%; margin: 20px 0;" onclick="registerAction()">Crear Cuenta</button>
+        <button class="btn btn-secondary" style="width: 100%; margin-top: 12px;"
+          onclick="generateRegisterKeys()">Generar claves</button>
+        <button class="btn btn-secondary" style="width: 100%; margin-top: 12px;"
+          onclick="signRegisterChallenge()">Firmar desafío</button>
+        <button class="btn btn-primary" style="width: 100%; margin: 20px 0;" onclick="registerAction()">Crear
+          Cuenta</button>
 
         <div style="text-align: center; margin-top: 16px;">
           <p style="font-size: 13px; color: var(--text-muted);">¿Ya tienes cuenta?</p>
-          <a href="login.html" style="color: var(--primary); text-decoration: none; font-weight: 500; font-size: 13px;">Inicia sesión aquí</a>
+          <a href="login.html"
+            style="color: var(--primary); text-decoration: none; font-weight: 500; font-size: 13px;">Inicia sesión
+            aquí</a>
         </div>
       </div>
     </div>
   </div>
 
   <script src="../js/crypto-auth.js"></script>
+  <script src="../js/wallet-crypto.js"></script>
   <script>
     async function loadRegisterChallenge() {
       const errorEl = document.getElementById('error-msg');
@@ -83,9 +104,9 @@
     async function generateRegisterKeys() {
       const errorEl = document.getElementById('error-msg');
       try {
-        const keys = await generateEcdsaKeyPairPem();
-        document.getElementById('reg-public-key').value = keys.publicKeyPem;
-        document.getElementById('reg-private-key').value = keys.privateKeyPem;
+        const keys = await generateEd25519KeyPairHex();
+        document.getElementById('reg-public-key').value = keys.publicKeyHex;
+        document.getElementById('reg-private-key').value = keys.privateKeyHex;
         await signRegisterChallenge();
       } catch (error) {
         errorEl.textContent = 'No se pudieron generar las claves en el navegador';
@@ -100,7 +121,7 @@
       const errorEl = document.getElementById('error-msg');
 
       if (!privateKey || !challenge) {
-        errorEl.textContent = 'Pegá la clave privada y obtené un desafío antes de firmar';
+        errorEl.textContent = 'Completá la clave privada y obtené un desafío antes de firmar';
         errorEl.classList.add('show');
         setTimeout(() => errorEl.classList.remove('show'), 3000);
         return;
@@ -119,14 +140,23 @@
       const legajo = document.getElementById('reg-legajo').value;
       const name = document.getElementById('reg-name').value;
       const email = document.getElementById('reg-email').value;
-      const public_key_pem = document.getElementById('reg-public-key').value.trim();
+      const password = document.getElementById('reg-password').value;
+      const public_key = document.getElementById('reg-public-key').value.trim().toLowerCase();
+      const privateKey = document.getElementById('reg-private-key').value.trim().toLowerCase();
       const challenge = document.getElementById('reg-challenge').value;
-      const signature = document.getElementById('reg-signature').value.trim();
+      const signature = document.getElementById('reg-signature').value.trim().toLowerCase();
       const errorEl = document.getElementById('error-msg');
       const successEl = document.getElementById('success-msg');
 
-      if (!legajo || !name || !email || !public_key_pem || !challenge || !signature) {
+      if (!legajo || !name || !email || !password || !public_key || !privateKey || !challenge || !signature) {
         errorEl.textContent = 'Por favor completa todos los campos';
+        errorEl.classList.add('show');
+        setTimeout(() => errorEl.classList.remove('show'), 3000);
+        return;
+      }
+
+      if (password.length < 8) {
+        errorEl.textContent = 'La contraseña debe tener al menos 8 caracteres';
         errorEl.classList.add('show');
         setTimeout(() => errorEl.classList.remove('show'), 3000);
         return;
@@ -136,12 +166,16 @@
         const response = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ legajo, name, email, public_key_pem, challenge, signature })
+          body: JSON.stringify({ legajo, name, email, password, public_key, challenge, signature })
         });
 
         const data = await response.json();
 
         if (response.ok) {
+          // La clave privada se cifra con la misma contraseña y se guarda
+          // localmente — el backend nunca la ve.
+          await encryptAndStorePrivateKey(legajo, privateKey, password);
+
           successEl.textContent = 'Cuenta creada exitosamente. Redirigiendo...';
           successEl.classList.add('show');
           setTimeout(() => {
@@ -161,4 +195,5 @@
     loadRegisterChallenge();
   </script>
 </body>
+
 </html>

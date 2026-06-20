@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html lang="es">
+<!-- DEO GLORIA -->
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard - EduTokens</title>
   <link rel="stylesheet" href="../css/styles.css">
 </head>
+
 <body>
   <div class="app">
     <!-- Header -->
@@ -30,31 +33,21 @@
         </div>
       </div>
 
-      <!-- Metrics -->
-      <div class="metrics-grid">
-        <div class="metric-card">
-          <div class="metric-value" id="metric-earned">0</div>
-          <div class="metric-label">Ganados</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-value" id="metric-spent">0</div>
-          <div class="metric-label">Gastados</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-value" id="metric-transactions">0</div>
-          <div class="metric-label">Transacciones</div>
-        </div>
-      </div>
-
       <!-- Quick Actions -->
       <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0;">
-        <button class="btn btn-outline" style="width: 100%; padding: 14px 8px; margin: 0; flex-direction: column; font-size: 12px; height: auto;" onclick="goTo('marketplace.html')">
+        <button class="btn btn-outline"
+          style="width: 100%; padding: 14px 8px; margin: 0; flex-direction: column; font-size: 12px; height: auto;"
+          onclick="goTo('marketplace.html')">
           🛍️ Canjear
         </button>
-        <button class="btn btn-outline" style="width: 100%; padding: 14px 8px; margin: 0; flex-direction: column; font-size: 12px; height: auto;" onclick="goTo('marketplace.html')">
+        <button class="btn btn-outline"
+          style="width: 100%; padding: 14px 8px; margin: 0; flex-direction: column; font-size: 12px; height: auto;"
+          onclick="goTo('marketplace.html')">
           🎁 Ofertas
         </button>
-        <button class="btn btn-outline" style="width: 100%; padding: 14px 8px; margin: 0; flex-direction: column; font-size: 12px; height: auto;" onclick="loadBalance()">
+        <button class="btn btn-outline"
+          style="width: 100%; padding: 14px 8px; margin: 0; flex-direction: column; font-size: 12px; height: auto;"
+          onclick="loadBalance()">
           🔄 Actualizar
         </button>
       </div>
@@ -97,4 +90,5 @@
 
   <script src="../js/home.js"></script>
 </body>
+
 </html>

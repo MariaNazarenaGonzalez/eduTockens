@@ -4,7 +4,7 @@ services:
     build:
       context: ./frontend
     ports:
-      - "8080:80"   # ← cambiás el puerto del host, no el del contenedor
+      - "9080:80"   # ← cambiás el puerto del host, no el del contenedor
     depends_on:
       - backend
 
@@ -15,10 +15,14 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/academic_points
-      NCT_BASE_URL: http://host.docker.internal:NCT_PORT  # ajustar según red del NCT
-      JWT_SECRET: change_this_in_production
+      NCT_BASE_URL: http://host.docker.internal:8080
+      JWT_SECRET: ${JWT_SECRET}
       JWT_ALGORITHM: HS256
       JWT_EXPIRE_MINUTES: 60
+      ACADEMIC_AUTHORITY_PRIVATE_KEY: ${ACADEMIC_AUTHORITY_PRIVATE_KEY}
+      ACADEMIC_AUTHORITY_PUBLIC_KEY: ${ACADEMIC_AUTHORITY_PUBLIC_KEY}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       db:
         condition: service_healthy

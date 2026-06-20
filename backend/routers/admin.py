@@ -1,260 +1,253 @@
 # DEO GLORIA
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+"""Endpoints de administración: emisión de puntos (EARN), gestión de vendors
+y productos, estadísticas globales.
+
+Todos requieren rol admin (Depends(get_current_admin)).
+"""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
-from typing import Optional
-from pydantic import BaseModel
+from sqlalchemy.orm import selectinload
 
-from core.security import get_current_user
+from core.crypto import generate_keypair_hex
 from core.database import get_db
-from models.models import User, Product, Role, Purchase
+from core.security import get_current_admin
+from models.models import Product, Purchase, TransactionLog, User, Vendor
+from schemas.schemas import (
+    AdminStats,
+    EarnRequest,
+    EarnResponse,
+    ProductCreate,
+    ProductResponse,
+    ProductUpdate,
+    PurchaseLogResponse,
+    VendorCreate,
+    VendorResponse,
+)
+from services.nct_client import NCTError, nct_client
 
-router = APIRouter()
-
-
-# ---------------------------------------------------------------------------
-# Dependency: verificar rol admin
-# ---------------------------------------------------------------------------
-
-async def require_admin(current_user: dict = Depends(get_current_user)):
-    if current_user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Se requiere rol admin")
-    return current_user
-
-
-# ---------------------------------------------------------------------------
-# Schemas
-# ---------------------------------------------------------------------------
-
-class EarnRequest(BaseModel):
-    legajo: str
-    amount: int
-    concept: str
-
-class StatsResponse(BaseModel):
-    students: int
-    transactions: int
-    blocks: int
-    total_supply: int
-
-class StockUpdate(BaseModel):
-    stock: Optional[int] = None
+router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(get_current_admin)])
 
 
 # ---------------------------------------------------------------------------
-# Endpoints
+# EARN — el backend arma y firma con la clave de ACADEMIC_SYSTEM
 # ---------------------------------------------------------------------------
 
-@router.post("/earn", response_model=dict)
-async def emit_points(
-    data: EarnRequest,
-    current_user: dict = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Emit points to a student (admin only).
-    Verifies that the student exists in the database before forwarding to NCT.
-    """
-    result = await db.execute(select(User).where(User.legajo == data.legajo))
+
+@router.post("/earn", response_model=EarnResponse)
+async def emit_earn(body: EarnRequest, db: AsyncSession = Depends(get_db)) -> EarnResponse:
+    result = await db.execute(select(User).where(User.legajo == body.legajo))
     student = result.scalar_one_or_none()
-    if not student:
-        raise HTTPException(status_code=404, detail=f"Estudiante con legajo '{data.legajo}' no encontrado")
+    if student is None:
+        raise HTTPException(status_code=404, detail=f"No existe un estudiante con legajo {body.legajo}")
 
-    # TODO: Emit EARN transaction to NCT
-    return {
-        "message": "Puntos emitidos exitosamente",
-        "transaction_id": "tx_earn_pending"
-    }
-
-
-@router.get("/stats", response_model=StatsResponse)
-async def get_stats(
-    current_user: dict = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Get system statistics.
-    Student count is queried from the database; blockchain stats delegate to NCT (pending).
-    """
-    # Count students by joining with the "student" role
-    role_result = await db.execute(select(Role).where(Role.name == "student"))
-    student_role = role_result.scalar_one_or_none()
-
-    student_count = 0
-    if student_role:
-        count_result = await db.execute(
-            select(func.count(User.id)).where(User.role_id == student_role.id)
+    try:
+        nct_result = await nct_client.emit_earn(
+            receiver_pubkey=student.public_key,
+            amount=body.amount,
+            concept=body.concept,
         )
-        student_count = count_result.scalar() or 0
+    except NCTError as exc:
+        raise HTTPException(status_code=502, detail=f"NCT rechazó la transacción: {exc}") from exc
 
-    # TODO: Query transactions, blocks and total_supply from NCT
-    # Maybe change the schema to instead of reading from NCT, to cache data on database and retrieve that data.
-    # We would then only use NCT and blockchain to do verifications when needed.
-    return StatsResponse(
-        students=student_count,
-        transactions=0,
-        blocks=0,
-        total_supply=0
+    tx_id = nct_result["tx_id"]
+
+    db.add(
+        TransactionLog(
+            user_id=student.id,
+            tx_type="EARN",
+            counterparty_pubkey=student.public_key,
+            amount=int(body.amount),
+            concept=body.concept,
+            nct_tx_id=tx_id,
+        )
+    )
+    await db.commit()
+
+    return EarnResponse(
+        tx_id=tx_id, legajo=body.legajo, amount=body.amount, concept=body.concept
     )
 
 
-@router.get("/products")
-async def get_all_products(
-    current_user: dict = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
-):
+# ---------------------------------------------------------------------------
+# Vendors
+# ---------------------------------------------------------------------------
+
+
+@router.post("/vendors", response_model=VendorResponse, status_code=201)
+async def create_vendor(body: VendorCreate, db: AsyncSession = Depends(get_db)) -> VendorResponse:
+    """Crea un vendor nuevo. El backend genera un keypair Ed25519 y
+    descarta la clave privada inmediatamente — solo se persiste la pubkey.
+    El vendor nunca firma nada (no es una cuenta operable, es una
+    dirección receptora pasiva de SPEND).
     """
-    List all products, both active and inactive.
-    Image binary is excluded from this listing; use GET /products/{id}/image to retrieve it.
-    """
-    result = await db.execute(select(Product))
+    _private_key_discarded, public_key = generate_keypair_hex()
+    # La línea anterior es intencional: la privkey no se asigna a ninguna
+    # variable de uso posterior ni se persiste en ningún lado. Existe solo
+    # en este scope y se pierde al retornar.
+
+    vendor = Vendor(name=body.name, public_key=public_key)
+    db.add(vendor)
+    await db.commit()
+    await db.refresh(vendor)
+
+    return VendorResponse.model_validate(vendor)
+
+
+@router.get("/vendors", response_model=list[VendorResponse])
+async def list_vendors(db: AsyncSession = Depends(get_db)) -> list[VendorResponse]:
+    result = await db.execute(select(Vendor).order_by(Vendor.id))
+    vendors = result.scalars().all()
+    return [VendorResponse.model_validate(v) for v in vendors]
+
+
+# ---------------------------------------------------------------------------
+# Products
+# ---------------------------------------------------------------------------
+
+
+async def _product_to_response(db: AsyncSession, product: Product) -> ProductResponse:
+    vendor_pubkey = None
+    if product.vendor_id is not None:
+        await db.refresh(product, attribute_names=["vendor"])
+        vendor_pubkey = product.vendor.public_key if product.vendor else None
+
+    return ProductResponse(
+        id=product.id,
+        name=product.name,
+        description=product.description,
+        price_points=product.price_points,
+        stock=product.stock,
+        active=product.active,
+        vendor_id=product.vendor_id,
+        vendor_pubkey=vendor_pubkey,
+        created_at=product.created_at,
+    )
+
+
+@router.get("/products", response_model=list[ProductResponse])
+async def admin_list_products(db: AsyncSession = Depends(get_db)) -> list[ProductResponse]:
+    result = await db.execute(select(Product).order_by(Product.id))
     products = result.scalars().all()
-    return [
-        {
-            "id": p.id,
-            "name": p.name,
-            "description": p.description,
-            "price_points": p.price_points,
-            "stock": p.stock,
-            "active": p.active,
-            "has_image": p.image_data is not None,
-            "image_mime_type": p.image_mime_type,
-            "created_at": p.created_at.isoformat() if p.created_at else None,
-        }
-        for p in products
-    ]
+    return [await _product_to_response(db, p) for p in products]
 
 
-@router.post("/products", response_model=dict)
-async def create_product(
-    name: str = Form(...),
-    description: Optional[str] = Form(None),
-    price_points: int = Form(...),
-    stock: Optional[int] = Form(None),
-    image: Optional[UploadFile] = File(None),
-    current_user: dict = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Create a new product. Accepts multipart/form-data; image is optional.
-    stock = NULL means unlimited stock.
-    """
-    image_data = None
-    image_mime_type = None
-    if image:
-        image_data = await image.read()
-        image_mime_type = image.content_type
+@router.post("/products", response_model=ProductResponse, status_code=201)
+async def create_product(body: ProductCreate, db: AsyncSession = Depends(get_db)) -> ProductResponse:
+    vendor_result = await db.execute(select(Vendor).where(Vendor.id == body.vendor_id))
+    if vendor_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail=f"No existe vendor con id {body.vendor_id}")
 
     product = Product(
-        name=name,
-        description=description,
-        price_points=price_points,
-        stock=stock,
-        image_data=image_data,
-        image_mime_type=image_mime_type,
+        name=body.name,
+        description=body.description,
+        price_points=body.price_points,
+        stock=body.stock,
+        vendor_id=body.vendor_id,
     )
     db.add(product)
     await db.commit()
     await db.refresh(product)
-    return {"message": "Producto creado", "id": product.id}
+
+    return await _product_to_response(db, product)
 
 
-@router.put("/products/{product_id}", response_model=dict)
+@router.put("/products/{product_id}", response_model=ProductResponse)
 async def update_product(
-    product_id: int,
-    name: str = Form(...),
-    description: Optional[str] = Form(None),
-    price_points: int = Form(...),
-    stock: Optional[int] = Form(None),
-    image: Optional[UploadFile] = File(None),
-    current_user: dict = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Update an existing product. Image is optional; if not provided, the existing image is kept.
-    """
+    product_id: int, body: ProductUpdate, db: AsyncSession = Depends(get_db)
+) -> ProductResponse:
     result = await db.execute(select(Product).where(Product.id == product_id))
     product = result.scalar_one_or_none()
-    if not product:
+    if product is None:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
 
-    product.name = name
-    product.description = description
-    product.price_points = price_points
-    product.stock = stock
-    if image:
-        product.image_data = await image.read()
-        product.image_mime_type = image.content_type
+    if body.vendor_id is not None:
+        vendor_result = await db.execute(select(Vendor).where(Vendor.id == body.vendor_id))
+        if vendor_result.scalar_one_or_none() is None:
+            raise HTTPException(status_code=404, detail=f"No existe vendor con id {body.vendor_id}")
+
+    update_data = body.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(product, field, value)
 
     await db.commit()
-    return {"message": "Producto actualizado"}
+    await db.refresh(product)
+
+    return await _product_to_response(db, product)
 
 
-@router.patch("/products/{product_id}/stock", response_model=dict)
-async def update_stock(
-    product_id: int,
-    data: StockUpdate,
-    current_user: dict = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Update only the stock of a product. stock = null means unlimited.
-    """
+@router.delete("/products/{product_id}", status_code=204, response_model=None)
+async def delete_product(product_id: int, db: AsyncSession = Depends(get_db)) -> None:
     result = await db.execute(select(Product).where(Product.id == product_id))
     product = result.scalar_one_or_none()
-    if not product:
+    if product is None:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
 
-    product.stock = data.stock
+    await db.delete(product)
     await db.commit()
-    return {"message": "Stock actualizado"}
 
-
-@router.delete("/products/{product_id}", response_model=dict)
-async def delete_product(
-    product_id: int,
-    current_user: dict = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Soft-delete a product: marks it as inactive (active = FALSE).
-    The record is preserved to maintain referential integrity with purchases.
-    """
-    result = await db.execute(select(Product).where(Product.id == product_id))
-    product = result.scalar_one_or_none()
-    if not product:
-        raise HTTPException(status_code=404, detail="Producto no encontrado")
-
-    product.active = False
-    await db.commit()
-    return {"message": "Producto dado de baja"}
 
 # ---------------------------------------------------------------------------
-# Logs Endpoint
+# Purchases (logs) — todas las compras, no solo las del usuario actual
 # ---------------------------------------------------------------------------
 
-@router.get("/logs")
-async def get_logs(
-    current_user: dict = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Get the last 100 purchase logs.
+
+@router.get("/purchases", response_model=list[PurchaseLogResponse])
+async def list_all_purchases(db: AsyncSession = Depends(get_db)) -> list[PurchaseLogResponse]:
+    """Últimas 30 compras de TODOS los estudiantes, con datos del usuario y
+    producto — alimenta el tab "Logs" del panel admin. Lee directamente de
+    la base de datos local de eduTockens (tabla `purchases`), no del NCT.
     """
     result = await db.execute(
-        select(Purchase).order_by(Purchase.id.desc()).limit(100)
+        select(Purchase)
+        .options(selectinload(Purchase.user), selectinload(Purchase.product))
+        .order_by(Purchase.purchased_at.desc())
+        .limit(30)
     )
     purchases = result.scalars().all()
-    
+
     return [
-        {
-            "id": p.id,
-            "user_id": p.user_id,
-            "product_id": p.product_id,
-            "points_spent": p.points_spent,
-            "nct_transaction_id": p.nct_transaction_id,
-            "created_at": p.created_at.isoformat() if p.created_at else None,
-        }
+        PurchaseLogResponse(
+            id=p.id,
+            legajo=p.user.legajo if p.user else "?",
+            product_name=p.product.name if p.product else "?",
+            points_spent=p.points_spent,
+            purchased_at=p.purchased_at,
+            nct_transaction_id=p.nct_transaction_id,
+        )
         for p in purchases
     ]
+
+
+# ---------------------------------------------------------------------------
+# Stats
+# ---------------------------------------------------------------------------
+
+
+@router.get("/stats", response_model=AdminStats)
+async def get_stats(db: AsyncSession = Depends(get_db)) -> AdminStats:
+    from models.models import Role
+
+    student_role_subq = select(Role.id).where(Role.name == "student").scalar_subquery()
+
+    total_students = (
+        await db.execute(select(func.count()).select_from(User).where(User.role_id == student_role_subq))
+    ).scalar_one()
+    total_vendors = (await db.execute(select(func.count()).select_from(Vendor))).scalar_one()
+    total_products = (await db.execute(select(func.count()).select_from(Product))).scalar_one()
+    total_purchases = (await db.execute(select(func.count()).select_from(Purchase))).scalar_one()
+    total_points_spent = (
+        await db.execute(select(func.coalesce(func.sum(Purchase.points_spent), 0)))
+    ).scalar_one()
+
+    return AdminStats(
+        total_students=total_students,
+        total_vendors=total_vendors,
+        total_products=total_products,
+        total_purchases=total_purchases,
+        total_points_spent=int(total_points_spent),
+    )

@@ -1,4 +1,4 @@
-// TODO: Implement product marketplace logic and navigation to purchase confirmation.
+/* DEO GLORIA */
 
 requireAuth();
 
@@ -19,7 +19,7 @@ async function loadBalance() {
   try {
     const token = getToken();
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    
+
     const response = await fetch(`${API_BASE_URL}/students/${user.legajo}/balance`, {
       headers: { 'Authorization': 'Bearer ' + token }
     });
@@ -39,7 +39,7 @@ async function loadBalance() {
 async function loadProducts() {
   try {
     const token = getToken();
-    
+
     const response = await fetch(`${API_BASE_URL}/products`, {
       headers: { 'Authorization': 'Bearer ' + token }
     });
@@ -58,7 +58,7 @@ async function loadProducts() {
  */
 function renderProducts(products) {
   const grid = document.getElementById('products-grid');
-  
+
   if (!products || products.length === 0) {
     grid.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 13px; grid-column: 1/-1;">Sin productos disponibles</div>';
     return;
@@ -66,7 +66,7 @@ function renderProducts(products) {
 
   // Emojis para productos
   const emojis = ['🍕', '☕', '🍰', '🥤', '🍪', '📚', '💻', '⏰'];
-  
+
   grid.innerHTML = products.map((product, idx) => `
     <div class="product-card" onclick="selectProduct(${product.id})">
       <div class="product-img" style="background: linear-gradient(135deg, #EEF2FF, #F5F3FF);">

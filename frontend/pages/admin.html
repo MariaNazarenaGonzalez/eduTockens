@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html lang="es">
+<!-- DEO GLORIA -->
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Panel Admin - EduTokens</title>
   <link rel="stylesheet" href="../css/styles.css">
 </head>
+
 <body>
   <div class="app">
     <!-- Header -->
@@ -24,48 +27,49 @@
           <div class="admin-stat-lbl">Estudiantes</div>
         </div>
         <div class="admin-stat">
-          <div class="admin-stat-val" id="stat-transactions">0</div>
-          <div class="admin-stat-lbl">Transacciones</div>
+          <div class="admin-stat-val" id="stat-vendors">0</div>
+          <div class="admin-stat-lbl">Vendors</div>
         </div>
         <div class="admin-stat">
-          <div class="admin-stat-val" id="stat-blocks">0</div>
-          <div class="admin-stat-lbl">Bloques</div>
+          <div class="admin-stat-val" id="stat-products">0</div>
+          <div class="admin-stat-lbl">Productos</div>
         </div>
         <div class="admin-stat">
           <div class="admin-stat-val" id="stat-supply">0</div>
-          <div class="admin-stat-lbl">Puntos Totales</div>
+          <div class="admin-stat-lbl">Puntos Gastados</div>
         </div>
       </div>
 
-      <!-- Action Buttons -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0;">
-        <button class="btn btn-primary" style="width: 100%; margin: 0;" onclick="goTo('admin.html')">📊 Estadísticas</button>
-        <button class="btn btn-outline" style="width: 100%; margin: 0;" onclick="showEarnForm()">➕ Emitir Puntos</button>
-      </div>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
-        <button class="btn btn-outline" style="width: 100%; margin: 0;" onclick="showProducts()">📦 Productos</button>
-        <button class="btn btn-outline" style="width: 100%; margin: 0;" onclick="showLogs()">📋 Logs</button>
-      </div>
+      <div id="error-msg" class="error-msg"></div>
+      <div id="success-msg" class="success-msg"></div>
 
       <!-- Tabs -->
-      <div style="display: flex; gap: 12px; margin-bottom: 20px; border-bottom: 2px solid var(--border); padding-bottom: 12px;">
-        <button id="tab-emit" style="flex: 1; padding: 10px; text-align: center; border: none; background: none; color: var(--primary); font-weight: 600; border-bottom: 2px solid var(--primary); font-family: 'DM Sans', sans-serif; cursor: pointer;" onclick="switchTab('emit')">Emitir Puntos</button>
-        <button id="tab-products" style="flex: 1; padding: 10px; text-align: center; border: none; background: none; color: var(--text-muted); font-weight: 600; border-bottom: 2px solid transparent; font-family: 'DM Sans', sans-serif; cursor: pointer;" onclick="switchTab('products')">Productos</button>
-        <button id="tab-logs" style="flex: 1; padding: 10px; text-align: center; border: none; background: none; color: var(--text-muted); font-weight: 600; border-bottom: 2px solid transparent; font-family: 'DM Sans', sans-serif; cursor: pointer;" onclick="switchTab('logs')">Logs</button>
+      <div
+        style="display: flex; gap: 12px; margin-bottom: 20px; border-bottom: 2px solid var(--border); padding-bottom: 12px;">
+        <button id="tab-emit"
+          style="flex: 1; padding: 10px; text-align: center; border: none; background: none; color: var(--primary); font-weight: 600; border-bottom: 2px solid var(--primary); font-family: 'DM Sans', sans-serif; cursor: pointer;"
+          onclick="switchTab('emit')">Emitir Puntos</button>
+        <button id="tab-products"
+          style="flex: 1; padding: 10px; text-align: center; border: none; background: none; color: var(--text-muted); font-weight: 600; border-bottom: 2px solid transparent; font-family: 'DM Sans', sans-serif; cursor: pointer;"
+          onclick="switchTab('products')">Productos</button>
+        <button id="tab-vendors"
+          style="flex: 1; padding: 10px; text-align: center; border: none; background: none; color: var(--text-muted); font-weight: 600; border-bottom: 2px solid transparent; font-family: 'DM Sans', sans-serif; cursor: pointer;"
+          onclick="switchTab('vendors')">Vendors</button>
+        <button id="tab-logs"
+          style="flex: 1; padding: 10px; text-align: center; border: none; background: none; color: var(--text-muted); font-weight: 600; border-bottom: 2px solid transparent; font-family: 'DM Sans', sans-serif; cursor: pointer;"
+          onclick="switchTab('logs')">Logs</button>
       </div>
 
       <!-- Emit Tab -->
       <div id="emit-section">
-        <div id="error-msg" class="error-msg"></div>
-
         <div class="input-group">
           <label class="input-label">Legajo del Estudiante</label>
           <input type="text" id="emit-legajo" class="input" placeholder="Ej: 12345678">
         </div>
 
         <div class="input-group">
-          <label class="input-label">Cantidad de Puntos</label>
-          <input type="number" id="emit-amount" class="input" placeholder="0" min="1">
+          <label class="input-label">Cantidad de Puntos (entero)</label>
+          <input type="number" id="emit-amount" class="input" placeholder="0" min="1" step="1">
         </div>
 
         <div class="input-group">
@@ -73,15 +77,47 @@
           <input type="text" id="emit-concept" class="input" placeholder="Ej: PARCIAL1, ASISTENCIA_2026-06-05">
         </div>
 
-        <button class="btn btn-primary" style="width: 100%; margin: 20px 0;" onclick="emitPoints()">Emitir Puntos</button>
+        <button class="btn btn-primary" style="width: 100%; margin: 20px 0;" onclick="emitPoints()">Emitir
+          Puntos</button>
       </div>
 
       <!-- Products Tab -->
       <div id="products-section" style="display: none;">
         <div style="display: flex; gap: 12px; margin-bottom: 16px;">
-          <button class="btn btn-primary" style="flex: 1; margin: 0;" onclick="showCreateProduct()">➕ Nuevo Producto</button>
+          <button class="btn btn-primary" style="flex: 1; margin: 0;" onclick="showCreateProduct()">➕ Nuevo
+            Producto</button>
           <button class="btn btn-outline" style="flex: 1; margin: 0;" onclick="loadProducts()">🔄 Actualizar</button>
         </div>
+
+        <!-- Create product form (hidden by default) -->
+        <div id="create-product-form" class="card" style="display: none; margin-bottom: 16px;">
+          <div class="input-group">
+            <label class="input-label">Nombre</label>
+            <input type="text" id="product-name" class="input" placeholder="Ej: Fotocopias x10">
+          </div>
+          <div class="input-group">
+            <label class="input-label">Descripción</label>
+            <input type="text" id="product-description" class="input" placeholder="Opcional">
+          </div>
+          <div class="input-group">
+            <label class="input-label">Precio en puntos (entero)</label>
+            <input type="number" id="product-price" class="input" placeholder="0" min="1" step="1">
+          </div>
+          <div class="input-group">
+            <label class="input-label">Stock (opcional)</label>
+            <input type="number" id="product-stock" class="input" placeholder="Dejar vacío = ilimitado" min="0"
+              step="1">
+          </div>
+          <div class="input-group">
+            <label class="input-label">Vendor</label>
+            <select id="product-vendor" class="input">
+              <option value="">Seleccionar vendor...</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" style="width: 100%; margin: 12px 0 0;" onclick="submitCreateProduct()">Crear
+            Producto</button>
+        </div>
+
         <div id="products-list" class="card" style="padding: 0; overflow-x: auto;">
           <table class="admin-table" style="font-size: 11px;">
             <thead>
@@ -89,12 +125,45 @@
                 <th>Producto</th>
                 <th>Precio</th>
                 <th>Stock</th>
+                <th>Vendor</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody id="products-tbody">
               <tr>
-                <td colspan="4" style="text-align: center; padding: 16px; color: var(--text-muted);">Cargando...</td>
+                <td colspan="5" style="text-align: center; padding: 16px; color: var(--text-muted);">Cargando...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Vendors Tab -->
+      <div id="vendors-section" style="display: none;">
+        <div class="card" style="margin-bottom: 16px;">
+          <div class="input-group">
+            <label class="input-label">Nombre del Vendor</label>
+            <input type="text" id="vendor-name" class="input" placeholder="Ej: Fotocopiadora Central">
+          </div>
+          <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">
+            El sistema genera automáticamente la clave pública del vendor. Es una dirección receptora pasiva — el vendor
+            nunca firma ni gasta puntos.
+          </p>
+          <button class="btn btn-primary" style="width: 100%; margin: 0;" onclick="submitCreateVendor()">➕ Crear
+            Vendor</button>
+        </div>
+
+        <div id="vendors-list" class="card" style="padding: 0; overflow-x: auto;">
+          <table class="admin-table" style="font-size: 11px;">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Clave Pública</th>
+              </tr>
+            </thead>
+            <tbody id="vendors-tbody">
+              <tr>
+                <td colspan="2" style="text-align: center; padding: 16px; color: var(--text-muted);">Cargando...</td>
               </tr>
             </tbody>
           </table>
@@ -108,7 +177,6 @@
             <thead>
               <tr>
                 <th>ID</th>
-                <th>Usuario</th>
                 <th>Producto</th>
                 <th>Puntos</th>
                 <th>TX ID</th>
@@ -117,7 +185,7 @@
             </thead>
             <tbody id="logs-tbody">
               <tr>
-                <td colspan="6" style="text-align: center; padding: 16px; color: var(--text-muted);">Cargando...</td>
+                <td colspan="5" style="text-align: center; padding: 16px; color: var(--text-muted);">Cargando...</td>
               </tr>
             </tbody>
           </table>
@@ -128,4 +196,5 @@
 
   <script src="../js/admin.js"></script>
 </body>
+
 </html>

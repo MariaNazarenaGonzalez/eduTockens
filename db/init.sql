@@ -1,19 +1,68 @@
--- TODO: Create the PostgreSQL schema for roles, users, products, purchases and seed any initial data.
+-- DEO GLORIA
+
+-- ============================================================================
+-- eduTockens — Schema PostgreSQL
+-- Migración: autenticación por challenge firmado con Ed25519 (sin password).
+-- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- roles
+-- Solo dos roles de USUARIO (login). 'vendor' NO es un rol de usuario:
+-- los vendors son una entidad propia (ver tabla `vendors`) que nunca hace
+-- login ni firma transacciones — solo recibe SPEND de forma pasiva.
+-- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS roles (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) UNIQUE NOT NULL
 );
 
+INSERT INTO roles (name) VALUES ('student') ON CONFLICT DO NOTHING;
+INSERT INTO roles (name) VALUES ('admin') ON CONFLICT DO NOTHING;
+
+-- ----------------------------------------------------------------------------
+-- users
+-- Auth de DOS FACTORES:
+--   1. Firma Ed25519 del challenge (prueba de posesión de la clave privada).
+--   2. Password tradicional (bcrypt) — el MISMO password que el usuario usa
+--      para cifrar su clave privada en localStorage del lado del cliente.
+-- public_key: 64 caracteres hex lowercase (clave pública Ed25519 raw, 32 bytes).
+-- password_hash: hash bcrypt (60 chars, formato $2b$...).
+-- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     legajo VARCHAR(20) UNIQUE NOT NULL,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(150) UNIQUE NOT NULL,
-    public_key_pem TEXT NOT NULL,
+    public_key VARCHAR(64) UNIQUE NOT NULL,
+    password_hash VARCHAR(60) NOT NULL,
     role_id INTEGER REFERENCES roles(id),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT chk_users_public_key_hex
+        CHECK (public_key ~ '^[0-9a-f]{64}$')
 );
 
+-- ----------------------------------------------------------------------------
+-- vendors  (NUEVA TABLA)
+-- Un vendor es solo una clave pública receptora de SPEND ("burn address" —
+-- nadie firma en su nombre; el backend genera el keypair al crear el vendor
+-- y descarta la clave privada inmediatamente, solo persiste la pública).
+-- Creado por el admin. No es un usuario, no hace login.
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS vendors (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    public_key VARCHAR(64) UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT chk_vendors_public_key_hex
+        CHECK (public_key ~ '^[0-9a-f]{64}$')
+);
+
+-- ----------------------------------------------------------------------------
+-- products
+-- + vendor_id: a qué vendor pertenece (receiver_pubkey de la SPEND).
+-- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS products (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -23,9 +72,15 @@ CREATE TABLE IF NOT EXISTS products (
     active BOOLEAN DEFAULT TRUE,
     image_data BYTEA,
     image_mime_type VARCHAR(50),
+    vendor_id INTEGER REFERENCES vendors(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- ----------------------------------------------------------------------------
+-- purchases
+-- Sin cambios de esquema. nct_transaction_id sigue siendo el cruce de
+-- auditoría entre la compra en Postgres y la transacción SPEND en el NCT.
+-- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS purchases (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id),
@@ -35,27 +90,67 @@ CREATE TABLE IF NOT EXISTS purchases (
     nct_transaction_id VARCHAR(100)
 );
 
--- Create indexes for faster queries
+-- ----------------------------------------------------------------------------
+-- transactions_log  (NUEVA TABLA)
+-- Índice local de TODAS las transacciones (EARN y SPEND) que el backend
+-- emitió al NCT, indexado por estudiante, para servir
+-- GET /students/{legajo}/transactions sin tener que leer /chain del NCT
+-- en cada request. El NCT sigue siendo la fuente de verdad; esto es un
+-- caché de lectura poblado en el momento en que el backend emite cada tx.
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS transactions_log (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    tx_type VARCHAR(10) NOT NULL,
+    counterparty_pubkey VARCHAR(64) NOT NULL,
+    amount INTEGER NOT NULL,
+    concept VARCHAR(128) NOT NULL,
+    nct_tx_id VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT chk_transactions_log_tx_type
+        CHECK (tx_type IN ('EARN', 'SPEND'))
+);
+
+-- ----------------------------------------------------------------------------
+-- Índices
+-- ----------------------------------------------------------------------------
 CREATE INDEX IF NOT EXISTS idx_users_legajo ON users(legajo);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_public_key ON users(public_key);
+CREATE INDEX IF NOT EXISTS idx_vendors_public_key ON vendors(public_key);
+CREATE INDEX IF NOT EXISTS idx_products_vendor_id ON products(vendor_id);
 CREATE INDEX IF NOT EXISTS idx_purchases_user_id ON purchases(user_id);
 CREATE INDEX IF NOT EXISTS idx_purchases_product_id ON purchases(product_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_log_user_id ON transactions_log(user_id);
 
--- Insert default roles
-INSERT INTO roles (name) VALUES ('student') ON CONFLICT DO NOTHING;
-INSERT INTO roles (name) VALUES ('admin') ON CONFLICT DO NOTHING;
-INSERT INTO roles (name) VALUES ('vendor') ON CONFLICT DO NOTHING;
-
--- Inserto el administrador para desarrollo. Reemplazar esta clave pública en producción.
-INSERT INTO users (legajo, name, email, public_key_pem, role_id)
+-- ----------------------------------------------------------------------------
+-- Seed de desarrollo — Administrador
+--
+-- ATENCIÓN — REEMPLAZAR EN PRODUCCIÓN / EN CUALQUIER ENTORNO COMPARTIDO:
+-- La clave pública de abajo corresponde a un par Ed25519 generado solo para
+-- desarrollo local. La clave privada correspondiente (NO se guarda en el
+-- repositorio) debe coincidir con ACADEMIC_AUTHORITY_PRIVATE_KEY del backend,
+-- que a su vez debe coincidir con AUTHORITY_PUBKEY configurado en el NCT.
+--
+-- Par de desarrollo (generar uno propio para cualquier otro entorno):
+--   private (NO commitear, va solo en .env del backend):
+--     20139855d1c596f918cdbefa75108b469fcd96e9c597b014385ab9b33e7503f7
+--   public (la que se inserta abajo, y la que debe configurarse como
+--   AUTHORITY_PUBKEY en el NCT):
+--     4bda9548d161d7edf80fc1ac34a09e4c609db55bfa5a58fe44c000ddae936a74
+--
+-- Password de desarrollo: "admin123" (CAMBIAR en cualquier entorno
+-- compartido/productivo). Este mismo password es el que el admin usa para
+-- cifrar su clave privada en localStorage Y para autenticarse contra el
+-- backend — ver core/security.py.
+-- ----------------------------------------------------------------------------
+INSERT INTO users (legajo, name, email, public_key, password_hash, role_id)
 VALUES (
     'admin',
     'Administrador',
     'admin@edutoken.com',
-    '-----BEGIN PUBLIC KEY-----
-MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE1WMs8+iLm03G8FTwdOWVet2GgtJGuVIx
-zQwRO8GZqt3wUUmOkDxRNrWRYBdAly+4SAp87CBZeBMtfuGJQZ8GEbbX7XGTh+Ip
-GvaTWABJw+R+LRStRIvonouUN+7PYu0l
------END PUBLIC KEY-----',
+    '4bda9548d161d7edf80fc1ac34a09e4c609db55bfa5a58fe44c000ddae936a74',
+    '$2b$12$ajaa77ta/BLuedTF5bFfju.Uj9GaFQajXT8Hrxv8JZ2HuDnxfS762',
     (SELECT id FROM roles WHERE name = 'admin')
 ) ON CONFLICT DO NOTHING;

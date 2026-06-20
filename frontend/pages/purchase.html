@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html lang="es">
+<!-- DEO GLORIA -->
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Compra - EduTokens</title>
   <link rel="stylesheet" href="../css/styles.css">
 </head>
+
 <body>
   <div class="app">
     <!-- Header -->
@@ -32,11 +35,13 @@
 
       <!-- Purchase Details -->
       <div class="card">
-        <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px;">
+        <div
+          style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px;">
           <span style="color: var(--text-muted);">Precio:</span>
           <span id="product-price" style="font-weight: 600;">0 pts</span>
         </div>
-        <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px;">
+        <div
+          style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px;">
           <span style="color: var(--text-muted);">Tu saldo:</span>
           <span id="current-balance" style="font-weight: 600; color: var(--primary);">0 pts</span>
         </div>
@@ -47,7 +52,8 @@
       </div>
 
       <!-- Warning if insufficient balance -->
-      <div id="insufficient-warning" style="background: #FEF9C3; border: 1px solid #FECDD3; color: #854D0E; padding: 12px 14px; border-radius: 10px; margin: 16px 0; font-size: 13px; display: none;">
+      <div id="insufficient-warning"
+        style="background: #FEF9C3; border: 1px solid #FECDD3; color: #854D0E; padding: 12px 14px; border-radius: 10px; margin: 16px 0; font-size: 13px; display: none;">
         ⚠️ Tu saldo es insuficiente para realizar esta compra.
       </div>
 
@@ -63,14 +69,21 @@
 
       <!-- Blockchain Info -->
       <div style="background: #0F172A; color: #E2E8F0; border-radius: 10px; padding: 16px; margin-top: 32px;">
-        <p style="font-size: 11px; color: #64748B; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;">ℹ️ Sobre esta transacción</p>
+        <p
+          style="font-size: 11px; color: #64748B; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;">
+          ℹ️ Sobre esta transacción</p>
         <p style="font-size: 12px; line-height: 1.6;">
-          Esta compra será registrada como una transacción SPEND en la blockchain distribuida. El registro es inmutable y auditable de forma permanente.
+          Esta compra será registrada como una transacción SPEND en la blockchain distribuida, firmada con tu clave
+          privada en este navegador. El registro es inmutable y auditable de forma permanente.
         </p>
       </div>
     </div>
   </div>
 
+  <script src="../js/crypto-auth.js"></script>
+  <script src="../js/wallet-crypto.js"></script>
+  <script src="../js/tx-signer.js"></script>
   <script src="../js/purchase.js"></script>
 </body>
+
 </html>

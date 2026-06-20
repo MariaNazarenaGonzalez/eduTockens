@@ -1,97 +1,65 @@
 # DEO GLORIA
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import Response
-from sqlalchemy.ext.asyncio import AsyncSession
+"""Endpoints públicos de productos (marketplace) — solo lectura."""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select
-from pydantic import BaseModel
-from typing import Optional
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
-from core.security import get_current_user
 from models.models import Product
+from schemas.schemas import ProductResponse
 
-router = APIRouter()
+router = APIRouter(prefix="/products", tags=["products"])
 
 
-class ProductResponse(BaseModel):
-    id: int
-    name: str
-    description: Optional[str]
-    price_points: int
-    stock: Optional[int]
-    active: bool
+async def _product_to_response(db: AsyncSession, product: Product) -> ProductResponse:
+    vendor_pubkey = None
+    if product.vendor_id is not None:
+        await db.refresh(product, attribute_names=["vendor"])
+        vendor_pubkey = product.vendor.public_key if product.vendor else None
 
-    class Config:
-        from_attributes = True
+    return ProductResponse(
+        id=product.id,
+        name=product.name,
+        description=product.description,
+        price_points=product.price_points,
+        stock=product.stock,
+        active=product.active,
+        vendor_id=product.vendor_id,
+        vendor_pubkey=vendor_pubkey,
+        created_at=product.created_at,
+    )
 
 
 @router.get("", response_model=list[ProductResponse])
-async def get_products(
-    current_user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    List all active products available in the marketplace.
-    """
-    result = await db.execute(
-        select(Product).where(Product.active == True).order_by(Product.id)
-    )
+async def list_products(db: AsyncSession = Depends(get_db)) -> list[ProductResponse]:
+    """Solo productos activos — esto alimenta el marketplace del estudiante."""
+    result = await db.execute(select(Product).where(Product.active.is_(True)).order_by(Product.id))
     products = result.scalars().all()
-    return products
+    return [await _product_to_response(db, p) for p in products]
 
 
 @router.get("/{product_id}", response_model=ProductResponse)
-async def get_product(
-    product_id: int,
-    current_user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
+async def get_product(product_id: int, db: AsyncSession = Depends(get_db)) -> ProductResponse:
+    """Incluye `vendor_pubkey` — el frontend lo necesita como receiver_pubkey
+    para armar y firmar la transacción SPEND ANTES de llamar a POST /purchases.
     """
-    Return details of a single active product.
-    """
-    result = await db.execute(
-        select(Product).where(Product.id == product_id, Product.active == True)
-    )
+    result = await db.execute(select(Product).where(Product.id == product_id))
     product = result.scalar_one_or_none()
+    if product is None:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
 
-    if not product:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Producto no encontrado.",
-        )
-
-    return product
+    return await _product_to_response(db, product)
 
 
 @router.get("/{product_id}/image")
-async def get_product_image(
-    product_id: int,
-    current_user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Serve the binary image of a product with its original MIME type.
-    Returns 404 if the product doesn't exist or has no image loaded.
-    """
-    result = await db.execute(
-        select(Product).where(Product.id == product_id, Product.active == True)
-    )
+async def get_product_image(product_id: int, db: AsyncSession = Depends(get_db)) -> Response:
+    result = await db.execute(select(Product).where(Product.id == product_id))
     product = result.scalar_one_or_none()
+    if product is None or product.image_data is None:
+        raise HTTPException(status_code=404, detail="Imagen no encontrada")
 
-    if not product:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Producto no encontrado.",
-        )
-
-    if not product.image_data or not product.image_mime_type:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="El producto no tiene imagen cargada.",
-        )
-
-    return Response(
-        content=product.image_data,
-        media_type=product.image_mime_type,
-    )
+    return Response(content=product.image_data, media_type=product.image_mime_type or "image/png")

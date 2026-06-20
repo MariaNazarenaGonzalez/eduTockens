@@ -1,212 +1,143 @@
-from datetime import datetime, timedelta
+# DEO GLORIA
 
-from fastapi import APIRouter, HTTPException, status, Depends
-from pydantic import BaseModel, EmailStr
+"""Endpoints de autenticación — challenge firmado con Ed25519 (sin password)."""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
-from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec
 
 from core.database import get_db
-from core.security import create_access_token
-from models.models import User, Role
+from core.security import (
+    AuthError,
+    create_access_token,
+    generate_challenge,
+    hash_password,
+    verify_challenge_signature,
+    verify_password,
+)
+from models.models import Role, User
+from schemas.schemas import (
+    ChallengeResponse,
+    LoginRequest,
+    RegisterRequest,
+    TokenResponse,
+    UserPublic,
+)
 
-router = APIRouter()
-
-
-CHALLENGE_FORMAT = "%Y-%m-%d %H:%M"
-
-
-class RegisterRequest(BaseModel):
-    legajo: str
-    name: str
-    email: EmailStr
-    public_key_pem: str
-    challenge: str
-    signature: str
-
-
-class LoginRequest(BaseModel):
-    identifier: str  # Accepts legajo or email
-    challenge: str
-    signature: str
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    user: dict
+@router.get("/challenge", response_model=ChallengeResponse)
+async def get_challenge() -> ChallengeResponse:
+    """Devuelve el timestamp actual del servidor (segundos, entero) como
+    string. No se persiste en ningún lado — la validez se controla
+    recalculando la ventana de tiempo en el momento de /login o /register.
+    """
+    return ChallengeResponse(challenge=generate_challenge())
 
 
-def current_challenge() -> str:
-    return datetime.now().strftime(CHALLENGE_FORMAT)
-
-
-def is_valid_challenge(challenge: str) -> bool:
-    now = datetime.now()
-    valid_challenges = {
-        (now + timedelta(minutes=offset)).strftime(CHALLENGE_FORMAT)
-        for offset in (-1, 0, 1)
-    }
-    return challenge in valid_challenges
-
-
-def validate_public_key(public_key_pem: str):
+@router.post("/register", response_model=UserPublic, status_code=status.HTTP_201_CREATED)
+async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)) -> UserPublic:
+    # La firma se verifica con la public_key que viene en el body — el
+    # usuario todavía no existe en la DB, así que no hay otra fuente.
     try:
-        public_key = serialization.load_pem_public_key(public_key_pem.encode("utf-8"))
-    except ValueError:
+        verify_challenge_signature(body.public_key, body.challenge, body.signature)
+    except AuthError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    # Unicidad
+    existing = await db.execute(
+        select(User).where(
+            (User.legajo == body.legajo)
+            | (User.email == body.email)
+            | (User.public_key == body.public_key)
+        )
+    )
+    if existing.scalar_one_or_none() is not None:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="La clave pública debe estar en formato PEM.",
+            status_code=409,
+            detail="Ya existe un usuario con ese legajo, email o public_key",
         )
 
-    if not isinstance(public_key, ec.EllipticCurvePublicKey):
+    role_result = await db.execute(select(Role).where(Role.name == "student"))
+    student_role = role_result.scalar_one_or_none()
+    if student_role is None:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="La clave pública debe ser ECDSA.",
-        )
-
-    return public_key
-
-
-def verify_signed_challenge(public_key_pem: str, challenge: str, signature_hex: str):
-    if not is_valid_challenge(challenge):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="El desafío expiró. Solicitá uno nuevo.",
-        )
-
-    try:
-        signature = bytes.fromhex(signature_hex)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="La firma debe estar codificada en hexadecimal.",
-        )
-
-    public_key = validate_public_key(public_key_pem)
-    try:
-        public_key.verify(
-            signature,
-            challenge.encode("utf-8"),
-            ec.ECDSA(hashes.SHA1()),
-        )
-    except InvalidSignature:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Firma inválida para el desafío provisto.",
-        )
-
-
-@router.get("/challenge")
-async def get_challenge():
-    """
-    Return the current server challenge. It changes once per minute.
-    """
-    return {"challenge": current_challenge()}
-
-
-@router.post("/register", response_model=dict, status_code=status.HTTP_201_CREATED)
-async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    """
-    Register a new student with a public key. Legajo and email must be unique.
-    """
-    verify_signed_challenge(data.public_key_pem, data.challenge, data.signature)
-
-    # Check legajo not taken
-    result = await db.execute(select(User).where(User.legajo == data.legajo))
-    if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="El legajo ya está registrado.",
-        )
-
-    # Check email not taken
-    result = await db.execute(select(User).where(User.email == data.email))
-    if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="El email ya está registrado.",
-        )
-
-    # Resolve student role id
-    result = await db.execute(select(Role).where(Role.name == "student"))
-    role = result.scalar_one_or_none()
-    if not role:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Rol 'student' no encontrado. Verificar inicialización de la base de datos.",
+            status_code=500,
+            detail="Rol 'student' no configurado — revisar seed de roles",
         )
 
     user = User(
-        legajo=data.legajo,
-        name=data.name,
-        email=data.email,
-        public_key_pem=data.public_key_pem,
-        role_id=role.id,
+        legajo=body.legajo,
+        name=body.name,
+        email=body.email,
+        public_key=body.public_key,
+        password_hash=hash_password(body.password),
+        role_id=student_role.id,
     )
     db.add(user)
     await db.commit()
-    await db.refresh(user)
+    await db.refresh(user, attribute_names=["role"])
 
-    return {
-        "message": "Registro exitoso.",
-        "user": {
-            "legajo": user.legajo,
-            "name": user.name,
-            "email": user.email,
-        },
-    }
+    return UserPublic(
+        id=user.id,
+        legajo=user.legajo,
+        name=user.name,
+        email=user.email,
+        public_key=user.public_key,
+        role=user.role.name,
+    )
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
-    """
-    Authenticate user by legajo or email + ECDSA signed challenge. Returns JWT
-    with sub (email), legajo, and role embedded in the payload.
-    """
+async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+    # Buscar al usuario por legajo o email para obtener su public_key y password_hash
     result = await db.execute(
         select(User).where(
-            or_(User.legajo == data.identifier, User.email == data.identifier)
+            (User.legajo == body.identifier) | (User.email == body.identifier)
         )
     )
     user = result.scalar_one_or_none()
+    if user is None:
+        # No revelar si el identifier existe o no — mensaje genérico
+        raise HTTPException(status_code=401, detail="Credenciales inválidas")
 
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Credenciales incorrectas.",
-        )
+    # Factor 1: password (bcrypt) — "algo que sabés"
+    if not verify_password(body.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Credenciales inválidas")
 
-    verify_signed_challenge(user.public_key_pem, data.challenge, data.signature)
+    # Factor 2: firma Ed25519 del challenge — "algo que tenés" (la clave privada)
+    try:
+        verify_challenge_signature(user.public_key, body.challenge, body.signature)
+    except AuthError:
+        raise HTTPException(status_code=401, detail="Credenciales inválidas") from None
 
-    # Resolve role name
-    result = await db.execute(select(Role).where(Role.id == user.role_id))
-    role = result.scalar_one_or_none()
-    role_name = role.name if role else "student"
+    await db.refresh(user, attribute_names=["role"])
+    role_name = user.role.name if user.role else "student"
 
-    token = create_access_token({
-        "sub": user.email,
-        "legajo": user.legajo,
-        "role": role_name,
-    })
+    token = create_access_token(
+        user_id=user.id, legajo=user.legajo, role=role_name, public_key=user.public_key
+    )
 
     return TokenResponse(
         access_token=token,
-        user={
-            "legajo": user.legajo,
-            "name": user.name,
-            "email": user.email,
-            "role": role_name,
-        },
+        user=UserPublic(
+            id=user.id,
+            legajo=user.legajo,
+            name=user.name,
+            email=user.email,
+            public_key=user.public_key,
+            role=role_name,
+        ),
     )
 
 
 @router.post("/logout")
-async def logout():
+async def logout() -> dict:
+    """JWT stateless: no hay invalidación del lado del servidor.
+    El cliente simplemente descarta el token (ver limitaciones conocidas
+    en el README de eduTockens).
     """
-    Stateless logout. The client discards the JWT locally.
-    Server-side invalidation is documented as a known limitation.
-    """
-    return {"message": "Logout exitoso."}
+    return {"status": "ok"}

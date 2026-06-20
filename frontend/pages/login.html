@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+<!-- DEO GLORIA -->
 
 <head>
   <meta charset="UTF-8">
@@ -29,21 +30,29 @@
         </div>
 
         <div class="input-group">
+          <label class="input-label">Contraseña</label>
+          <input type="password" id="login-password" class="input" placeholder="Tu contraseña">
+        </div>
+
+        <div class="input-group">
           <label class="input-label">Desafío del sistema</label>
           <input type="text" id="login-challenge" class="input" readonly>
         </div>
 
         <div class="input-group">
           <label class="input-label">Desafío firmado con clave privada</label>
-          <textarea id="login-signature" class="input" rows="4" placeholder="Firma hexadecimal del desafío"></textarea>
+          <textarea id="login-signature" class="input mono" rows="3"
+            placeholder="Firma hexadecimal del desafío (128 caracteres)"></textarea>
         </div>
 
         <div class="input-group">
-          <label class="input-label">Clave privada (opcional para firmar aquí)</label>
-          <textarea id="login-private-key" class="input" rows="6" placeholder="-----BEGIN PRIVATE KEY-----"></textarea>
+          <label class="input-label">Clave privada (Ed25519, 64 caracteres hex)</label>
+          <input type="text" id="login-private-key" class="input mono"
+            placeholder="64 caracteres hex — no se envía al servidor" maxlength="64">
         </div>
 
-        <button class="btn btn-secondary" style="width: 100%; margin-top: 12px;" onclick="signLoginChallenge()">Firmar desafío</button>
+        <button class="btn btn-secondary" style="width: 100%; margin-top: 12px;" onclick="signLoginChallenge()">Firmar
+          desafío</button>
         <button class="btn btn-primary" style="width: 100%; margin: 20px 0;" onclick="loginAction()">Ingresar</button>
 
         <div style="text-align: center; margin-top: 20px;">
@@ -82,7 +91,7 @@
       const errorEl = document.getElementById('error-msg');
 
       if (!privateKey || !challenge) {
-        errorEl.textContent = 'Pegá la clave privada y obtené un desafío antes de firmar';
+        errorEl.textContent = 'Completá la clave privada y obtené un desafío antes de firmar';
         errorEl.classList.add('show');
         setTimeout(() => errorEl.classList.remove('show'), 3000);
         return;
@@ -99,11 +108,12 @@
 
     async function loginAction() {
       const identifier = document.getElementById('login-identifier').value;
+      const password = document.getElementById('login-password').value;
       const challenge = document.getElementById('login-challenge').value;
-      const signature = document.getElementById('login-signature').value.trim();
+      const signature = document.getElementById('login-signature').value.trim().toLowerCase();
       const errorEl = document.getElementById('error-msg');
 
-      if (!identifier || !challenge || !signature) {
+      if (!identifier || !password || !challenge || !signature) {
         errorEl.textContent = 'Por favor completa todos los campos';
         errorEl.classList.add('show');
         setTimeout(() => errorEl.classList.remove('show'), 3000);
@@ -114,7 +124,7 @@
         const response = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identifier, challenge, signature })
+          body: JSON.stringify({ identifier, password, challenge, signature })
         });
 
         let data;
