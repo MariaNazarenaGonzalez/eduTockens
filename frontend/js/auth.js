@@ -11,11 +11,11 @@
  *   <script type="module" src="js/auth.js"></script>
  */
 
-import {
-  generateEd25519KeyPair,
-  fetchAuthChallenge,
-  signChallenge,
-} from './crypto-auth.js';
+// NOTA: crypto-auth.js y wallet-crypto.js se cargan como <script> clásico
+// (NO como ES modules) — exponen funciones globales. Este módulo las referencia
+// directamente del scope global en lugar de importarlas.
+//   crypto-auth.js  → generateEd25519KeyPairHex, fetchAuthChallenge, signChallengeWithPrivateKey
+//   wallet-crypto.js → decryptStoredPrivateKey, encryptAndStorePrivateKey
 
 const API_BASE_URL = '/api';
 
@@ -95,9 +95,9 @@ function getActiveKeyPair() {
  */
 async function register(legajo, name, email) {
   try {
-    const { privateKeyHex, publicKeyHex } = generateEd25519KeyPair();
+    const { privateKeyHex, publicKeyHex } = await generateEd25519KeyPairHex();
     const challenge = await fetchAuthChallenge();
-    const signature = signChallenge(privateKeyHex, challenge);
+    const signature = await signChallengeWithPrivateKey(privateKeyHex, challenge);
 
     const response = await fetch(`${API_BASE_URL}/auth/register`, {
       method: 'POST',
@@ -139,11 +139,19 @@ async function register(legajo, name, email) {
  *
  * @param {string} identifier - legajo o email del usuario
  */
-async function login(identifier) {
+async function login(identifier, password) {
   try {
-    const privateKeyHex =
-      localStorage.getItem(`privateKey:${identifier}`) ||
-      localStorage.getItem('activePrivateKey');
+    // La clave privada se descifra con el password (wallet-crypto.js).
+    // Si no hay wallet cifrado, se intenta con la clave activa en texto plano
+    // (modo legacy — solo para desarrollo).
+    let privateKeyHex;
+    try {
+      privateKeyHex = await decryptStoredPrivateKey(identifier, password);
+    } catch {
+      privateKeyHex =
+        localStorage.getItem(`privateKey:${identifier}`) ||
+        localStorage.getItem('activePrivateKey');
+    }
 
     if (!privateKeyHex) {
       throw new Error(
@@ -153,12 +161,12 @@ async function login(identifier) {
     }
 
     const challenge = await fetchAuthChallenge();
-    const signature = signChallenge(privateKeyHex, challenge);
+    const signature = await signChallengeWithPrivateKey(privateKeyHex, challenge);
 
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ identifier, challenge, signature }),
+      body: JSON.stringify({ identifier, password, challenge, signature }),
     });
 
     if (!response.ok) {

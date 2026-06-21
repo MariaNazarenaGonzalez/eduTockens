@@ -1,8 +1,11 @@
 /* DEO GLORIA */
 
-requireAuth();
+// marketplace.js — Marketplace de productos canjeables.
+//
+// Dependencias (cargadas antes en el HTML):
+//   common.js — getToken, requireAuth, getCurrentUser, logout, goTo
 
-const API_BASE_URL = '/api';
+requireAuth();
 
 /**
  * Inicializar marketplace
@@ -17,11 +20,10 @@ async function initMarketplace() {
  */
 async function loadBalance() {
   try {
-    const token = getToken();
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = getCurrentUser();
 
     const response = await fetch(`${API_BASE_URL}/students/${user.legajo}/balance`, {
-      headers: { 'Authorization': 'Bearer ' + token }
+      headers: getAuthHeaders()
     });
 
     if (response.ok) {
@@ -38,10 +40,8 @@ async function loadBalance() {
  */
 async function loadProducts() {
   try {
-    const token = getToken();
-
     const response = await fetch(`${API_BASE_URL}/products`, {
-      headers: { 'Authorization': 'Bearer ' + token }
+      headers: getAuthHeaders()
     });
 
     if (response.ok) {
@@ -64,7 +64,6 @@ function renderProducts(products) {
     return;
   }
 
-  // Emojis para productos
   const emojis = ['🍕', '☕', '🍰', '🥤', '🍪', '📚', '💻', '⏰'];
 
   grid.innerHTML = products.map((product, idx) => `
@@ -89,48 +88,16 @@ function renderProducts(products) {
 }
 
 /**
- * Seleccionar producto
+ * Seleccionar producto y navegar a compra
  */
 function selectProduct(productId) {
-  // Almacenar producto seleccionado
   sessionStorage.setItem('selected_product_id', productId);
   goToPurchase(productId);
 }
 
-/**
- * Navegar a página de compra
- */
 function goToPurchase(productId) {
   sessionStorage.setItem('selected_product_id', productId);
   window.location.href = 'purchase.html';
-}
-
-/**
- * Navegar a otra página
- */
-function goTo(path) {
-  window.location.href = path;
-}
-
-/**
- * Logout
- */
-function logout() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('role');
-  localStorage.removeItem('user');
-  window.location.href = 'login.html';
-}
-
-// Funciones de autenticación
-function getToken() {
-  return localStorage.getItem('token');
-}
-
-function requireAuth() {
-  if (!getToken()) {
-    window.location.href = 'login.html';
-  }
 }
 
 // Inicializar al cargar

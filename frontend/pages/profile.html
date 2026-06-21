@@ -80,8 +80,9 @@
       <!-- Security -->
       <div style="margin-top: 32px;">
         <h2 style="font-size: 15px; font-weight: 600; margin-bottom: 12px;">Seguridad</h2>
-        <button class="btn btn-outline" style="width: 100%; margin: 0 0 12px 0;" onclick="goTo('security.html')">Cambiar
-          Contraseña</button>
+        <!-- "Cambiar Contraseña" no implementado aún — el cambio de password requeriría
+             re-cifrar la clave privada local con el nuevo password (wallet-crypto.js).
+             Para el alcance del PoC, la contraseña se elige en el registro y no se modifica. -->
         <button class="btn btn-ghost" style="width: 100%; margin: 0; color: var(--error);" onclick="logout()">Cerrar
           Sesión</button>
       </div>

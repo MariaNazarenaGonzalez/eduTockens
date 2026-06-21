@@ -1,16 +1,17 @@
 /* DEO GLORIA */
 
 // home.js — Dashboard del estudiante: balance e historial reciente.
+//
+// Dependencias (cargadas antes en el HTML):
+//   common.js — getToken, requireAuth, getCurrentUser, logout, goTo
 
 requireAuth();
-
-const API_BASE_URL = '/api';
 
 /**
  * Cargar datos iniciales del estudiante
  */
 async function initDashboard() {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const user = getCurrentUser();
   document.getElementById('student-name').textContent = user.name || 'Estudiante';
 
   await loadBalance();
@@ -23,11 +24,10 @@ async function initDashboard() {
  */
 async function loadBalance() {
   try {
-    const token = getToken();
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = getCurrentUser();
 
     const response = await fetch(`${API_BASE_URL}/students/${user.legajo}/balance`, {
-      headers: { 'Authorization': 'Bearer ' + token }
+      headers: getAuthHeaders()
     });
 
     if (response.ok) {
@@ -48,11 +48,10 @@ async function loadBalance() {
  */
 async function loadTransactions() {
   try {
-    const token = getToken();
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = getCurrentUser();
 
     const response = await fetch(`${API_BASE_URL}/students/${user.legajo}/transactions`, {
-      headers: { 'Authorization': 'Bearer ' + token }
+      headers: getAuthHeaders()
     });
 
     if (response.ok) {
@@ -97,39 +96,6 @@ function renderTransactions(transactions) {
 function viewTransaction(txId) {
   // TODO: Implementar vista de detalle de transacción
   console.log('Viewing transaction:', txId);
-}
-
-/**
- * Navegar a otra página
- */
-function goTo(path) {
-  if (path.startsWith('#')) {
-    // Navegar a historial completo
-    window.location.href = 'profile.html';
-  } else {
-    window.location.href = path;
-  }
-}
-
-/**
- * Logout
- */
-function logout() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('role');
-  localStorage.removeItem('user');
-  window.location.href = 'login.html';
-}
-
-// Obtener token desde localStorage
-function getToken() {
-  return localStorage.getItem('token');
-}
-
-function requireAuth() {
-  if (!getToken()) {
-    window.location.href = 'login.html';
-  }
 }
 
 // Inicializar dashboard al cargar la página

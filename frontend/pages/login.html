@@ -1,12 +1,68 @@
 <!DOCTYPE html>
 <html lang="es">
 <!-- DEO GLORIA -->
+<!--
+  login.html — v2 (2026-06-21)
+  Flujo simplificado: el usuario ingresa legajo/email + contraseña.
+  El sistema descifra la clave privada del wallet (AES-GCM cifrada con
+  PBKDF2 de esa misma contraseña), firma el challenge del servidor, y
+  completa el login en un solo paso.
 
+  Modo avanzado (colapsado por defecto): permite pegar clave privada en
+  hex manualmente — útil para:
+    - Admin (clave pre-seedeada en init.sql, sin wallet cifrado)
+    - Recuperación (el usuario tiene la clave privada pero no el wallet)
+    - Desarrollo / debugging
+-->
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login - EduTokens</title>
   <link rel="stylesheet" href="../css/styles.css">
+  <style>
+    .advanced-toggle {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin-top: 20px;
+      background: none;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+    .advanced-toggle:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    .advanced-section {
+      display: none;
+      margin-top: 12px;
+      padding: 16px;
+      background: var(--bg);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+    .advanced-section.show {
+      display: block;
+    }
+    .spinner-inline {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
 </head>
 
 <body>
@@ -26,34 +82,50 @@
 
         <div class="input-group">
           <label class="input-label">Legajo / Email</label>
-          <input type="text" id="login-identifier" class="input" placeholder="Tu legajo o email">
+          <input type="text" id="login-identifier" class="input" placeholder="Tu legajo o email" autocomplete="username">
         </div>
 
         <div class="input-group">
           <label class="input-label">Contraseña</label>
-          <input type="password" id="login-password" class="input" placeholder="Tu contraseña">
+          <input type="password" id="login-password" class="input" placeholder="Tu contraseña" autocomplete="current-password">
+          <p style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+            Se usa para descifrar tu clave privada localmente y autenticarte. Nunca se envía sin cifrar.
+          </p>
         </div>
 
-        <div class="input-group">
-          <label class="input-label">Desafío del sistema</label>
-          <input type="text" id="login-challenge" class="input" readonly>
-        </div>
+        <button id="login-btn" class="btn btn-primary" style="width: 100%; margin: 20px 0;" onclick="loginAction()">
+          Ingresar
+        </button>
 
-        <div class="input-group">
-          <label class="input-label">Desafío firmado con clave privada</label>
-          <textarea id="login-signature" class="input mono" rows="3"
-            placeholder="Firma hexadecimal del desafío (128 caracteres)"></textarea>
+        <!-- Modo avanzado: clave privada manual (colapsado) -->
+        <button class="advanced-toggle" onclick="toggleAdvanced()" type="button">
+          ⚙️ Modo avanzado (clave privada manual)
+        </button>
+        <div id="advanced-section" class="advanced-section">
+          <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">
+            Solo necesario si no tenés wallet cifrada en este navegador (admin, recuperación, desarrollo).
+          </p>
+          <div class="input-group">
+            <label class="input-label">Clave privada (Ed25519, 64 caracteres hex)</label>
+            <input type="text" id="login-private-key" class="input mono"
+              placeholder="64 caracteres hex — no se envía al servidor" maxlength="64" autocomplete="off">
+          </div>
+          <div class="input-group">
+            <label class="input-label">Desafío del sistema</label>
+            <input type="text" id="login-challenge" class="input" readonly>
+          </div>
+          <div class="input-group">
+            <label class="input-label">Desafío firmado con clave privada</label>
+            <textarea id="login-signature" class="input mono" rows="3"
+              placeholder="Firma hexadecimal del desafío (128 caracteres)"></textarea>
+          </div>
+          <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="signManualChallenge()" type="button">
+            Firmar desafío manualmente
+          </button>
+          <button class="btn btn-primary" style="width: 100%; margin-top: 12px;" onclick="loginManualAction()">
+            Ingresar (modo manual)
+          </button>
         </div>
-
-        <div class="input-group">
-          <label class="input-label">Clave privada (Ed25519, 64 caracteres hex)</label>
-          <input type="text" id="login-private-key" class="input mono"
-            placeholder="64 caracteres hex — no se envía al servidor" maxlength="64">
-        </div>
-
-        <button class="btn btn-secondary" style="width: 100%; margin-top: 12px;" onclick="signLoginChallenge()">Firmar
-          desafío</button>
-        <button class="btn btn-primary" style="width: 100%; margin: 20px 0;" onclick="loginAction()">Ingresar</button>
 
         <div style="text-align: center; margin-top: 20px;">
           <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">¿No tienes cuenta?</p>
@@ -66,6 +138,7 @@
   </div>
 
   <script src="../js/crypto-auth.js"></script>
+  <script src="../js/wallet-crypto.js"></script>
   <script>
     let currentRole = 'student';
 
@@ -75,51 +148,111 @@
       el.classList.add('active');
     }
 
+    function toggleAdvanced() {
+      document.getElementById('advanced-section').classList.toggle('show');
+      // Cargar el challenge solo si se abre el panel avanzado
+      if (document.getElementById('advanced-section').classList.contains('show')) {
+        loadLoginChallenge();
+      }
+    }
+
     async function loadLoginChallenge() {
-      const errorEl = document.getElementById('error-msg');
       try {
         document.getElementById('login-challenge').value = await fetchAuthChallenge();
       } catch (error) {
-        errorEl.textContent = error.message;
-        errorEl.classList.add('show');
+        showError('No se pudo obtener el desafío del servidor. ¿Está corriendo el backend?');
       }
     }
 
-    async function signLoginChallenge() {
+    // -----------------------------------------------------------------------
+    // Flujo normal: wallet cifrado
+    // -----------------------------------------------------------------------
+
+    async function loginAction() {
+      const identifier = document.getElementById('login-identifier').value.trim();
+      const password = document.getElementById('login-password').value;
+      const btn = document.getElementById('login-btn');
+
+      if (!identifier || !password) {
+        showError('Ingresá tu legajo/email y contraseña');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-inline"></span> Ingresando...';
+
+      try {
+        // 1. Descifrar clave privada del wallet local
+        let privateKeyHex;
+        try {
+          privateKeyHex = await decryptStoredPrivateKey(identifier, password);
+        } catch (e) {
+          // Si no hay wallet, mostrar mensaje claro y sugerir modo avanzado
+          throw new Error(
+            'No se encontró una clave privada cifrada para este usuario en este navegador. ' +
+            'Si ya te registraste desde otro navegador, usá el "Modo avanzado" para ingresar ' +
+            'con tu clave privada manualmente.'
+          );
+        }
+
+        // 2. Firmar challenge
+        const challenge = await fetchAuthChallenge();
+        const signature = await signChallengeWithPrivateKey(privateKeyHex, challenge);
+
+        // 3. Login
+        await doLogin(identifier, password, challenge, signature, btn);
+      } catch (error) {
+        showError(error.message);
+        btn.disabled = false;
+        btn.innerHTML = 'Ingresar';
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // Modo avanzado: clave privada manual (fallback / admin / dev)
+    // -----------------------------------------------------------------------
+
+    async function signManualChallenge() {
       const privateKey = document.getElementById('login-private-key').value.trim();
       const challenge = document.getElementById('login-challenge').value.trim();
-      const errorEl = document.getElementById('error-msg');
 
       if (!privateKey || !challenge) {
-        errorEl.textContent = 'Completá la clave privada y obtené un desafío antes de firmar';
-        errorEl.classList.add('show');
-        setTimeout(() => errorEl.classList.remove('show'), 3000);
+        showError('Completá la clave privada y obtené un desafío antes de firmar');
         return;
       }
 
       try {
-        document.getElementById('login-signature').value = await signChallengeWithPrivateKey(privateKey, challenge);
+        document.getElementById('login-signature').value =
+          await signChallengeWithPrivateKey(privateKey, challenge);
       } catch (error) {
-        errorEl.textContent = 'No se pudo firmar el desafío con la clave privada';
-        errorEl.classList.add('show');
-        setTimeout(() => errorEl.classList.remove('show'), 3000);
+        showError('No se pudo firmar el desafío. Verificá que la clave privada tenga 64 caracteres hex.');
       }
     }
 
-    async function loginAction() {
-      const identifier = document.getElementById('login-identifier').value;
+    async function loginManualAction() {
+      const identifier = document.getElementById('login-identifier').value.trim();
       const password = document.getElementById('login-password').value;
       const challenge = document.getElementById('login-challenge').value;
       const signature = document.getElementById('login-signature').value.trim().toLowerCase();
-      const errorEl = document.getElementById('error-msg');
 
-      if (!identifier || !password || !challenge || !signature) {
-        errorEl.textContent = 'Por favor completa todos los campos';
-        errorEl.classList.add('show');
-        setTimeout(() => errorEl.classList.remove('show'), 3000);
+      if (!identifier || !challenge || !signature) {
+        showError('Completá todos los campos (incluido el desafío firmado)');
         return;
       }
 
+      if (!password) {
+        showError('La contraseña es obligatoria (segundo factor de autenticación)');
+        return;
+      }
+
+      await doLogin(identifier, password, challenge, signature, null);
+    }
+
+    // -----------------------------------------------------------------------
+    // Login común (usado por ambos flujos)
+    // -----------------------------------------------------------------------
+
+    async function doLogin(identifier, password, challenge, signature, btn) {
       try {
         const response = await fetch('/api/auth/login', {
           method: 'POST',
@@ -138,6 +271,8 @@
           localStorage.setItem('token', data.access_token);
           localStorage.setItem('role', data.user.role);
           localStorage.setItem('user', JSON.stringify(data.user));
+          // Guardar la pubkey activa para que purchase.js la encuentre
+          localStorage.setItem('activePublicKey', data.user.public_key);
 
           if (data.user.role === 'admin') {
             window.location.href = 'admin.html';
@@ -148,14 +283,20 @@
           throw new Error(data?.detail || 'Error en el login');
         }
       } catch (error) {
-        errorEl.textContent = error.message;
-        errorEl.classList.add('show');
-        setTimeout(() => errorEl.classList.remove('show'), 3000);
-        loadLoginChallenge();
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = 'Ingresar';
+        }
+        throw error;
       }
     }
 
-    loadLoginChallenge();
+    function showError(message) {
+      const el = document.getElementById('error-msg');
+      el.textContent = message;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 5000);
+    }
   </script>
 </body>
 

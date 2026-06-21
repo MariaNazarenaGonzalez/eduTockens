@@ -176,11 +176,44 @@
           // localmente — el backend nunca la ve.
           await encryptAndStorePrivateKey(legajo, privateKey, password);
 
-          successEl.textContent = 'Cuenta creada exitosamente. Redirigiendo...';
+          successEl.textContent = 'Cuenta creada. Iniciando sesión automáticamente...';
           successEl.classList.add('show');
-          setTimeout(() => {
-            window.location.href = 'login.html';
-          }, 2000);
+
+          // Auto-login: ya tenemos todos los datos, no hace falta pasar por login.html
+          try {
+            const loginResponse = await fetch('/api/auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                identifier: legajo,
+                password: password,
+                challenge: challenge,
+                signature: signature
+              })
+            });
+
+            if (loginResponse.ok) {
+              const loginData = await loginResponse.json();
+              localStorage.setItem('token', loginData.access_token);
+              localStorage.setItem('role', loginData.user.role);
+              localStorage.setItem('user', JSON.stringify(loginData.user));
+              localStorage.setItem('activePublicKey', loginData.user.public_key);
+
+              setTimeout(() => {
+                window.location.href = 'home.html';
+              }, 1000);
+            } else {
+              // Login automático falló — redirigir a login manual
+              setTimeout(() => {
+                window.location.href = 'login.html';
+              }, 2000);
+            }
+          } catch {
+            // Si falla el login (ej. backend no accesible), ir a login manual
+            setTimeout(() => {
+              window.location.href = 'login.html';
+            }, 2000);
+          }
         } else {
           throw new Error(data.detail || 'Error en el registro');
         }

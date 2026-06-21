@@ -7,56 +7,12 @@
 // privada de ACADEMIC_SYSTEM — esa vive únicamente en el backend
 // (env/secret). El admin solo manda { legajo, amount, concept } y el
 // backend arma y firma la transacción EARN completa.
+//
+// Dependencias (cargadas antes en el HTML):
+//   common.js — getToken, requireAuth, requireAdmin, getAuthHeaders, showError, showSuccess, logout, goTo
 
 requireAuth();
 requireAdmin();
-
-const API_BASE_URL = '/api';
-
-function getToken() {
-  return localStorage.getItem('token');
-}
-
-function getUserRole() {
-  return localStorage.getItem('role');
-}
-
-function requireAuth() {
-  if (!getToken()) {
-    window.location.href = 'login.html';
-  }
-}
-
-function requireAdmin() {
-  if (getUserRole() !== 'admin') {
-    window.location.href = 'home.html';
-  }
-}
-
-function authHeaders() {
-  return {
-    'Content-Type': 'application/json',
-    Authorization: 'Bearer ' + getToken(),
-  };
-}
-
-function logout() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('role');
-  localStorage.removeItem('user');
-  window.location.href = 'login.html';
-}
-
-function goTo(path) {
-  window.location.href = path;
-}
-
-function showMessage(elId, message, isError) {
-  const el = document.getElementById(elId);
-  el.textContent = message;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), isError ? 4000 : 3000);
-}
 
 // ---------------------------------------------------------------------------
 // Tabs
@@ -88,7 +44,7 @@ function switchTab(tab) {
 
 async function loadStats() {
   try {
-    const response = await fetch(`${API_BASE_URL}/admin/stats`, { headers: authHeaders() });
+    const response = await fetch(`${API_BASE_URL}/admin/stats`, { headers: getAuthHeaders() });
     if (!response.ok) throw new Error('No se pudieron cargar las estadísticas');
 
     const stats = await response.json();
@@ -111,33 +67,39 @@ async function emitPoints() {
   const concept = document.getElementById('emit-concept').value.trim();
 
   if (!legajo || !amountStr || !concept) {
-    showMessage('error-msg', 'Completá todos los campos', true);
+    showError('error-msg', 'Completá todos los campos');
     return;
   }
 
   const amount = parseInt(amountStr, 10);
   if (!Number.isInteger(amount) || amount <= 0) {
-    showMessage('error-msg', 'La cantidad de puntos debe ser un entero positivo', true);
+    showError('error-msg', 'La cantidad de puntos debe ser un entero positivo');
     return;
   }
 
   try {
     const response = await fetch(`${API_BASE_URL}/admin/earn`, {
       method: 'POST',
-      headers: authHeaders(),
+      headers: getAuthHeaders(),
       body: JSON.stringify({ legajo, amount, concept }),
     });
 
     const data = await response.json();
-    if (!response.ok) throw new Error(data.detail || 'Error al emitir puntos');
+    if (!response.ok) {
+      const detail = data.detail || 'Error al emitir puntos';
+      if (detail.includes('NCT')) {
+        throw new Error('El NCT rechazó la emisión. ¿Está corriendo? Error: ' + detail);
+      }
+      throw new Error(detail);
+    }
 
-    showMessage('success-msg', `Puntos emitidos. TX: ${data.tx_id}`, false);
+    showSuccess('success-msg', `Puntos emitidos. TX: ${data.tx_id}`);
     document.getElementById('emit-legajo').value = '';
     document.getElementById('emit-amount').value = '';
     document.getElementById('emit-concept').value = '';
     loadStats();
   } catch (error) {
-    showMessage('error-msg', error.message, true);
+    showError('error-msg', error.message);
   }
 }
 
@@ -148,7 +110,7 @@ async function emitPoints() {
 async function loadVendors() {
   const tbody = document.getElementById('vendors-tbody');
   try {
-    const response = await fetch(`${API_BASE_URL}/admin/vendors`, { headers: authHeaders() });
+    const response = await fetch(`${API_BASE_URL}/admin/vendors`, { headers: getAuthHeaders() });
     if (!response.ok) throw new Error('No se pudieron cargar los vendors');
 
     const vendors = await response.json();
@@ -187,49 +149,42 @@ function populateVendorSelect(vendors) {
 async function submitCreateVendor() {
   const name = document.getElementById('vendor-name').value.trim();
   if (!name) {
-    showMessage('error-msg', 'Ingresá un nombre para el vendor', true);
+    showError('error-msg', 'Ingresá un nombre para el vendor');
     return;
   }
 
   try {
     const response = await fetch(`${API_BASE_URL}/admin/vendors`, {
       method: 'POST',
-      headers: authHeaders(),
+      headers: getAuthHeaders(),
       body: JSON.stringify({ name }),
     });
 
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || 'Error al crear el vendor');
 
-    showMessage('success-msg', `Vendor "${data.name}" creado`, false);
+    showSuccess('success-msg', `Vendor "${data.name}" creado`);
     document.getElementById('vendor-name').value = '';
     loadVendors();
     loadStats();
   } catch (error) {
-    showMessage('error-msg', error.message, true);
+    showError('error-msg', error.message);
   }
 }
 
 // ---------------------------------------------------------------------------
-// Productos
+// Products
 // ---------------------------------------------------------------------------
-
-function showCreateProduct() {
-  const form = document.getElementById('create-product-form');
-  form.style.display = form.style.display === 'none' ? 'block' : 'none';
-  if (form.style.display === 'block') {
-    loadVendors(); // asegura que el select de vendors esté actualizado
-  }
-}
 
 async function loadProducts() {
   const tbody = document.getElementById('products-tbody');
   try {
-    const response = await fetch(`${API_BASE_URL}/admin/products`, { headers: authHeaders() });
+    const response = await fetch(`${API_BASE_URL}/admin/products`, { headers: getAuthHeaders() });
     if (!response.ok) throw new Error('No se pudieron cargar los productos');
 
     const products = await response.json();
     renderProductsTable(products);
+    populateVendorSelectFromProducts(products);
   } catch (error) {
     tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:16px; color:var(--error);">${error.message}</td></tr>`;
   }
@@ -246,13 +201,21 @@ function renderProductsTable(products) {
     <tr>
       <td>${p.name}</td>
       <td>${p.price_points} pts</td>
-      <td>${p.stock === null || p.stock === undefined ? '∞' : p.stock}</td>
-      <td>${p.vendor_id ?? '—'}</td>
+      <td>${p.stock ?? '∞'}</td>
+      <td style="font-size: 10px;">${p.vendor_pubkey ? p.vendor_pubkey.slice(0, 8) + '...' : '—'}</td>
       <td>
-        <button class="btn btn-outline btn-sm" style="margin: 0;" onclick="deleteProductAction(${p.id})">🗑️</button>
+        <button class="btn btn-ghost" style="font-size: 11px; padding: 4px 8px; margin: 0; color: var(--error);" onclick="deleteProductAction(${p.id})">Eliminar</button>
       </td>
     </tr>
   `).join('');
+}
+
+function populateVendorSelectFromProducts(products) {
+  // Ya se llena en loadVendors
+}
+
+function showCreateProduct() {
+  document.getElementById('create-product-form').style.display = 'block';
 }
 
 async function submitCreateProduct() {
@@ -263,20 +226,20 @@ async function submitCreateProduct() {
   const vendorId = document.getElementById('product-vendor').value;
 
   if (!name || !priceStr || !vendorId) {
-    showMessage('error-msg', 'Completá nombre, precio y vendor', true);
+    showError('error-msg', 'Completá nombre, precio y vendor');
     return;
   }
 
-  const price_points = parseInt(priceStr, 10);
-  if (!Number.isInteger(price_points) || price_points <= 0) {
-    showMessage('error-msg', 'El precio debe ser un entero positivo', true);
+  const pricePoints = parseInt(priceStr, 10);
+  if (!Number.isInteger(pricePoints) || pricePoints <= 0) {
+    showError('error-msg', 'El precio debe ser un entero positivo');
     return;
   }
 
   const payload = {
     name,
     description: description || null,
-    price_points,
+    price_points: pricePoints,
     stock: stockStr ? parseInt(stockStr, 10) : null,
     vendor_id: parseInt(vendorId, 10),
   };
@@ -284,14 +247,14 @@ async function submitCreateProduct() {
   try {
     const response = await fetch(`${API_BASE_URL}/admin/products`, {
       method: 'POST',
-      headers: authHeaders(),
+      headers: getAuthHeaders(),
       body: JSON.stringify(payload),
     });
 
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || 'Error al crear el producto');
 
-    showMessage('success-msg', `Producto "${data.name}" creado`, false);
+    showSuccess('success-msg', `Producto "${data.name}" creado`);
     document.getElementById('product-name').value = '';
     document.getElementById('product-description').value = '';
     document.getElementById('product-price').value = '';
@@ -300,7 +263,7 @@ async function submitCreateProduct() {
     loadProducts();
     loadStats();
   } catch (error) {
-    showMessage('error-msg', error.message, true);
+    showError('error-msg', error.message);
   }
 }
 
@@ -310,7 +273,7 @@ async function deleteProductAction(productId) {
   try {
     const response = await fetch(`${API_BASE_URL}/admin/products/${productId}`, {
       method: 'DELETE',
-      headers: authHeaders(),
+      headers: getAuthHeaders(),
     });
 
     if (!response.ok && response.status !== 204) {
@@ -318,11 +281,11 @@ async function deleteProductAction(productId) {
       throw new Error(data.detail || 'Error al eliminar el producto');
     }
 
-    showMessage('success-msg', 'Producto eliminado', false);
+    showSuccess('success-msg', 'Producto eliminado');
     loadProducts();
     loadStats();
   } catch (error) {
-    showMessage('error-msg', error.message, true);
+    showError('error-msg', error.message);
   }
 }
 
@@ -333,7 +296,7 @@ async function deleteProductAction(productId) {
 async function loadLogs() {
   const tbody = document.getElementById('logs-tbody');
   try {
-    const response = await fetch(`${API_BASE_URL}/admin/purchases`, { headers: authHeaders() });
+    const response = await fetch(`${API_BASE_URL}/admin/purchases`, { headers: getAuthHeaders() });
     if (!response.ok) throw new Error('No se pudieron cargar los logs');
 
     const logs = await response.json();
@@ -367,5 +330,5 @@ function renderLogsTable(logs) {
 
 window.addEventListener('DOMContentLoaded', () => {
   loadStats();
-  loadVendors(); // para poblar el <select> de productos desde el arranque
+  loadVendors();
 });

@@ -7,6 +7,89 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Compra - EduTokens</title>
   <link rel="stylesheet" href="../css/styles.css">
+  <style>
+    /* ── Password Modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.show {
+      display: flex;
+    }
+    .modal-dialog {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 24px;
+      width: calc(100% - 48px);
+      max-width: 360px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+      animation: modalIn 0.2s ease;
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: translateY(16px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .modal-dialog h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .modal-dialog p {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+    .modal-dialog .input {
+      width: 100%;
+      margin-bottom: 16px;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .modal-actions button {
+      flex: 1;
+      margin: 0;
+    }
+
+    /* ── Loading overlay ── */
+    .loading-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(3px);
+      z-index: 300;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .loading-overlay.show {
+      display: flex;
+    }
+    .loading-spinner-ring {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255,255,255,0.2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text {
+      color: white;
+      font-size: 13px;
+      font-weight: 500;
+    }
+  </style>
 </head>
 
 <body>
@@ -80,6 +163,26 @@
     </div>
   </div>
 
+  <!-- ── Password Modal ── -->
+  <div id="password-modal" class="modal-overlay">
+    <div class="modal-dialog">
+      <h3>🔐 Confirmar Compra</h3>
+      <p>Ingresá tu contraseña para descifrar tu clave privada y firmar la transacción SPEND. Tu clave nunca sale de este navegador.</p>
+      <input type="password" id="modal-password" class="input" placeholder="Tu contraseña" autocomplete="current-password">
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closePasswordModal()" style="margin: 0;">Cancelar</button>
+        <button class="btn btn-primary" id="modal-confirm-btn" onclick="confirmWithPassword()" style="margin: 0;">Firmar y Comprar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Loading Overlay ── -->
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="loading-spinner-ring"></div>
+    <div class="loading-text" id="loading-text">Firmando transacción...</div>
+  </div>
+
+  <script src="../js/common.js"></script>
   <script src="../js/crypto-auth.js"></script>
   <script src="../js/wallet-crypto.js"></script>
   <script src="../js/tx-signer.js"></script>

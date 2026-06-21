@@ -6,32 +6,15 @@
 // solo para firmar).
 //
 // El backend (POST /purchases) NO firma nada por el estudiante — solo
-// reenvía esta transacción ya firmada al NCT. El signing dict que se
-// construye aquí debe coincidir EXACTAMENTE con lo que el backend
-// reconstruye a partir del producto en DB (mismo amount=price_points,
-// mismo receiver_pubkey=vendor_pubkey, mismo concept=nombre del producto).
+// reenvía esta transacción ya firmada al NCT.
 //
-// Requiere que se hayan cargado antes: crypto-auth.js (firma Ed25519),
-// wallet-crypto.js (descifrado de la clave privada), tx-signer.js
-// (cálculo de tx_id y firma de transacciones).
+// Dependencias (cargadas antes en el HTML):
+//   common.js      — getToken, getCurrentUser, requireAuth, getAuthHeaders
+//   crypto-auth.js — signChallengeWithPrivateKey
+//   wallet-crypto.js — decryptStoredPrivateKey
+//   tx-signer.js   — computeTxId
 
 requireAuth();
-
-const API_BASE_URL = '/api';
-
-function getToken() {
-  return localStorage.getItem('token');
-}
-
-function requireAuth() {
-  if (!getToken()) {
-    window.location.href = 'login.html';
-  }
-}
-
-function getCurrentUser() {
-  return JSON.parse(localStorage.getItem('user') || '{}');
-}
 
 let _selectedProduct = null;
 let _currentAccount = null;
@@ -41,38 +24,30 @@ let _currentAccount = null;
  * seteado por marketplace.js) y el balance/nonce actual del estudiante.
  */
 async function initPurchasePage() {
-  const errorEl = document.getElementById('error-msg');
   const productId = sessionStorage.getItem('selected_product_id');
 
   if (!productId) {
-    errorEl.textContent = 'No se seleccionó ningún producto';
-    errorEl.classList.add('show');
+    showError('error-msg', 'No se seleccionó ningún producto');
     return;
   }
 
   try {
     const user = getCurrentUser();
-    const token = getToken();
 
     const [productRes, balanceRes] = await Promise.all([
-      fetch(`${API_BASE_URL}/products/${productId}`, {
-        headers: { Authorization: 'Bearer ' + token },
-      }),
-      fetch(`${API_BASE_URL}/students/${user.legajo}/balance`, {
-        headers: { Authorization: 'Bearer ' + token },
-      }),
+      fetch(`${API_BASE_URL}/products/${productId}`, { headers: getAuthHeaders() }),
+      fetch(`${API_BASE_URL}/students/${user.legajo}/balance`, { headers: getAuthHeaders() }),
     ]);
 
     if (!productRes.ok) throw new Error('No se pudo cargar el producto');
     if (!balanceRes.ok) throw new Error('No se pudo cargar el saldo');
 
     _selectedProduct = await productRes.json();
-    _currentAccount = await balanceRes.json(); // { legajo, public_key, balance, nonce }
+    _currentAccount = await balanceRes.json();
 
     renderPurchaseSummary();
   } catch (error) {
-    errorEl.textContent = error.message;
-    errorEl.classList.add('show');
+    showError('error-msg', error.message);
   }
 }
 
@@ -99,60 +74,87 @@ function renderPurchaseSummary() {
   }
 }
 
+// ── Password Modal ────────────────────────────────────────────────
+
+function showPasswordModal() {
+  document.getElementById('modal-password').value = '';
+  document.getElementById('password-modal').classList.add('show');
+  document.getElementById('modal-password').focus();
+}
+
+function closePasswordModal() {
+  document.getElementById('password-modal').classList.remove('show');
+}
+
+function showLoading(text) {
+  document.getElementById('loading-text').textContent = text;
+  document.getElementById('loading-overlay').classList.add('show');
+}
+
+function hideLoading() {
+  document.getElementById('loading-overlay').classList.remove('show');
+}
+
 /**
- * Pide la contraseña, descifra la clave privada, arma y firma el SPEND,
- * y confirma la compra contra el backend.
+ * Abre el modal de contraseña para confirmar la compra.
+ * El flujo real de firma ocurre en confirmWithPassword().
  */
-async function confirmPurchase() {
-  const errorEl = document.getElementById('error-msg');
+function confirmPurchase() {
   const product = _selectedProduct;
   const account = _currentAccount;
 
   if (!product || !account) {
-    errorEl.textContent = 'Datos de la compra no disponibles, recargá la página';
-    errorEl.classList.add('show');
+    showError('error-msg', 'Datos de la compra no disponibles, recargá la página');
     return;
   }
 
   if (!product.vendor_pubkey) {
-    errorEl.textContent = 'Este producto no tiene un vendor asignado — no se puede comprar';
-    errorEl.classList.add('show');
+    showError('error-msg', 'Este producto no tiene un vendor asignado — no se puede comprar');
     return;
   }
 
-  const user = getCurrentUser();
+  showPasswordModal();
+}
 
-  // La contraseña se pide en el momento de firmar — nunca se guarda en
-  // memoria ni en localStorage (solo el material cifrado de la clave
-  // privada persiste, no la contraseña).
-  const password = window.prompt('Ingresá tu contraseña para firmar la compra:');
+/**
+ * Callback del modal: descifra la clave, firma el SPEND y confirma la compra.
+ */
+async function confirmWithPassword() {
+  const password = document.getElementById('modal-password').value;
   if (!password) {
-    return; // usuario canceló
+    showError('error-msg', 'Ingresá tu contraseña');
+    return;
   }
 
+  const product = _selectedProduct;
+  const account = _currentAccount;
+  const user = getCurrentUser();
+
+  // Validaciones pre-firma
+  if (account.public_key !== user.public_key) {
+    closePasswordModal();
+    showError('error-msg', 'La cuenta autenticada no coincide con los datos de saldo obtenidos');
+    return;
+  }
+
+  closePasswordModal();
+  showLoading('Descifrando clave privada...');
+
+  // 1. Descifrar clave
   let privateKeyHex;
   try {
     privateKeyHex = await decryptStoredPrivateKey(user.legajo, password);
   } catch (error) {
-    errorEl.textContent = error.message;
-    errorEl.classList.add('show');
-    setTimeout(() => errorEl.classList.remove('show'), 3000);
+    hideLoading();
+    showError('error-msg', error.message);
     return;
   }
 
-  if (account.public_key !== user.public_key) {
-    // Salvaguarda: si la pubkey de la sesión no coincide con la cuenta,
-    // firmar produciría una transacción que el NCT rechazaría de todos
-    // modos (sender_pubkey no correspondería con la clave que firmó).
-    errorEl.textContent = 'La cuenta autenticada no coincide con los datos de saldo obtenidos';
-    errorEl.classList.add('show');
-    return;
-  }
-
-  const timestamp = Date.now() / 1000; // segundos, float — va en el wire
-  // payload, no participa de la firma
+  // 2. Armar signing dict y firmar
+  showLoading('Firmando transacción SPEND...');
+  const timestamp = Date.now() / 1000;
   const nonce = account.nonce;
-  const amount = Math.trunc(product.price_points); // entero — Transaction.amount es int
+  const amount = Math.trunc(product.price_points);
 
   const signingBody = {
     sender_pubkey: user.public_key,
@@ -167,22 +169,18 @@ async function confirmPurchase() {
   try {
     const txId = await computeTxId(signingBody);
     signature = await signChallengeWithPrivateKey(privateKeyHex, txId);
-    // Nota: signChallengeWithPrivateKey firma los bytes UTF-8 del string
-    // recibido — es la misma operación de firma que usa tx-signer.js,
-    // reutilizada acá para no duplicar la llamada a @noble/curves.
   } catch (error) {
-    errorEl.textContent = 'No se pudo firmar la transacción';
-    errorEl.classList.add('show');
+    hideLoading();
+    showError('error-msg', 'No se pudo firmar la transacción. Verificá tu clave privada.');
     return;
   }
 
+  // 3. Enviar al backend → NCT
+  showLoading('Enviando transacción al NCT...');
   try {
     const response = await fetch(`${API_BASE_URL}/purchases`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + getToken(),
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify({
         product_id: product.id,
         nonce,
@@ -194,15 +192,20 @@ async function confirmPurchase() {
     const data = await response.json();
 
     if (response.ok) {
-      window.alert('¡Compra confirmada! Tx ID: ' + data.nct_transaction_id);
+      hideLoading();
+      window.alert('✅ ¡Compra confirmada!\n\nTx ID: ' + data.nct_transaction_id);
       window.location.href = 'home.html';
     } else {
-      throw new Error(data.detail || 'Error al confirmar la compra');
+      hideLoading();
+      const detail = data.detail || 'Error al confirmar la compra';
+      if (detail.includes('NCT')) {
+        throw new Error('El NCT rechazó la transacción. ¿Está corriendo el NCT? Detalle: ' + detail);
+      }
+      throw new Error(detail);
     }
   } catch (error) {
-    errorEl.textContent = error.message;
-    errorEl.classList.add('show');
-    setTimeout(() => errorEl.classList.remove('show'), 4000);
+    hideLoading();
+    showError('error-msg', error.message, 8000);
   }
 }
 
