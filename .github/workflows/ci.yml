@@ -1,19 +1,17 @@
-# ci.yml — Build y push de imágenes Docker de EduTokens-app a Artifact Registry
+# ci.yml — Build, Push & Deploy de EduTokens-app a GKE
 #
 # Triggers:
-#   push a main         → build + push de las 2 imágenes
+#   push a main         → build + push + deploy automático
 #   pull_request a main → solo build (verifica que compilan, sin pushear)
 #
 # Autenticación a GCP vía Workload Identity Federation (OIDC).
 # Cero service account keys — el token OIDC lo emite GitHub Actions
 # y GCP lo valida contra el pool github-actions-oidc.
 #
-# ⚠️  Requisito previo (ya está en iam.tf, solo falta aplicar):
-#   El pool WIF ya acepta MariaNazarenaGonzalez/ (attribute_condition) y
-#   tiene el binding IAM para MariaNazarenaGonzalez/eduTockens.
-#   Solo falta ejecutar: cd pilar3/tofu && tofu apply
+# ⚠️  Requisito previo: el SA github-actions@edutokens-2026.iam.gserviceaccount.com
+#     ya tiene roles/container.developer (definido en iam.tf).
 
-name: CI — Build & Push
+name: CI — Build, Push & Deploy
 
 on:
   push:
@@ -24,21 +22,27 @@ on:
 env:
   REGISTRY: us-central1-docker.pkg.dev
   REPO: edutokens-2026/edutokens-repo
+  GKE_CLUSTER: edutokens-cluster
+  GKE_ZONE: us-central1-a
 
 jobs:
-  build-and-push:
-    name: Build images
+  build-push-deploy:
+    name: Build, Push & Deploy
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write   # necesario para google-github-actions/auth
+      id-token: write   # WIF OIDC
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── GCP Authentication ──────────────────────────────────────────
-      # Solo en push a main (no en PRs desde forks)
+      # ── SHA tag (inmutable, único por commit) ─────────────────────
+      - name: Compute SHA tag
+        id: sha
+        run: echo "tag=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      # ── GCP Authentication ────────────────────────────────────────
       - name: Auth to GCP
         if: github.event_name == 'push'
         uses: google-github-actions/auth@v2
@@ -50,11 +54,10 @@ jobs:
         if: github.event_name == 'push'
         run: gcloud auth configure-docker $REGISTRY --quiet
 
-      # ── Buildx (container driver, necesario para cache export) ──────
+      # ── Buildx ────────────────────────────────────────────────────
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # ── Build & Push helpers ────────────────────────────────────────
       - name: Set push flag
         id: flags
         run: |
@@ -64,24 +67,61 @@ jobs:
             echo "push=false" >> $GITHUB_OUTPUT
           fi
 
-      # ── Backend (FastAPI + uvicorn) ──────────────────────────────────
+      # ── Backend (FastAPI + uvicorn) ────────────────────────────────
       - name: Build Backend
         uses: docker/build-push-action@v6
         with:
           context: backend/
           file: backend/Dockerfile
           push: ${{ steps.flags.outputs.push }}
-          tags: ${{ env.REGISTRY }}/${{ env.REPO }}/edutokens-backend:latest
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.REPO }}/edutokens-backend:latest
+            ${{ env.REGISTRY }}/${{ env.REPO }}/edutokens-backend:${{ steps.sha.outputs.tag }}
           cache-from: type=gha,scope=backend
           cache-to: ${{ steps.flags.outputs.push == 'true' && 'type=gha,mode=max,scope=backend' || '' }}
 
-      # ── Frontend (nginx + estáticos) ─────────────────────────────────
+      # ── Frontend (nginx + estáticos) ───────────────────────────────
       - name: Build Frontend
         uses: docker/build-push-action@v6
         with:
           context: frontend/
           file: frontend/Dockerfile
           push: ${{ steps.flags.outputs.push }}
-          tags: ${{ env.REGISTRY }}/${{ env.REPO }}/edutokens-frontend:latest
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.REPO }}/edutokens-frontend:latest
+            ${{ env.REGISTRY }}/${{ env.REPO }}/edutokens-frontend:${{ steps.sha.outputs.tag }}
           cache-from: type=gha,scope=frontend
           cache-to: ${{ steps.flags.outputs.push == 'true' && 'type=gha,mode=max,scope=frontend' || '' }}
+
+      # ── Stamp image SHAs into manifests ───────────────────────────
+      - name: Install yq
+        if: github.event_name == 'push'
+        run: |
+          wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          chmod +x /usr/local/bin/yq
+
+      - name: Stamp SHA into deployment manifests
+        if: github.event_name == 'push'
+        run: |
+          SHA="${{ steps.sha.outputs.tag }}"
+          REG="${{ env.REGISTRY }}/${{ env.REPO }}"
+
+          yq -i ".spec.template.spec.containers[0].image = \"${REG}/edutokens-backend:${SHA}\"" k8s/backend-deployment.yaml
+          yq -i ".spec.template.spec.containers[0].image = \"${REG}/edutokens-frontend:${SHA}\"" k8s/frontend-deployment.yaml
+
+          echo "Stamped manifests with SHA: ${SHA}"
+
+      # ── Deploy to GKE ─────────────────────────────────────────────
+      - name: Get GKE credentials
+        if: github.event_name == 'push'
+        run: gcloud container clusters get-credentials $GKE_CLUSTER --zone $GKE_ZONE
+
+      - name: Deploy to GKE
+        if: github.event_name == 'push'
+        run: kubectl apply -f k8s/
+
+      - name: Verify rollout
+        if: github.event_name == 'push'
+        run: |
+          kubectl -n apps rollout status deployment/backend  --timeout=120s
+          kubectl -n apps rollout status deployment/frontend --timeout=120s

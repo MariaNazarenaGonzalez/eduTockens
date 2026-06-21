@@ -39,7 +39,6 @@ from typing import Any, Optional
 
 from httpx import AsyncClient, HTTPError
 
-from core.config import settings
 from core.crypto import compute_tx_id, sign_message
 
 
@@ -54,8 +53,10 @@ class NCTError(Exception):
 class NCTClient:
     """Cliente HTTP asíncrono para el NCT."""
 
-    def __init__(self, base_url: Optional[str] = None):
-        self.base_url = base_url or settings.nct_base_url
+    def __init__(self, base_url: str, authority_public_key: str = "", authority_private_key: str = ""):
+        self.base_url = base_url
+        self.authority_public_key = authority_public_key
+        self.authority_private_key = authority_private_key
         self.client = AsyncClient(base_url=self.base_url, timeout=30.0)
 
     # ------------------------------------------------------------------
@@ -131,8 +132,8 @@ class NCTClient:
         rechazo (ej. nonce desincronizado, AUTHORITY_PUBKEY no configurada
         en el NCT, etc.)
         """
-        sender_pubkey = settings.academic_authority_public_key
-        if not sender_pubkey or not settings.academic_authority_private_key:
+        sender_pubkey = self.authority_public_key
+        if not sender_pubkey or not self.authority_private_key:
             raise NCTError(
                 "ACADEMIC_AUTHORITY_PUBLIC_KEY / ACADEMIC_AUTHORITY_PRIVATE_KEY "
                 "no están configuradas en el backend"
@@ -158,7 +159,7 @@ class NCTClient:
         )
 
         # 3. Firmar tx_id con la clave privada de la autoridad
-        signature = sign_message(settings.academic_authority_private_key, tx_id)
+        signature = sign_message(self.authority_private_key, tx_id)
 
         # 4. POST al NCT
         payload = {
@@ -214,4 +215,9 @@ class NCTClient:
 
 
 # Global NCT client instance
-nct_client = NCTClient()
+from core.config import settings as _settings
+nct_client = NCTClient(
+    base_url=_settings.nct_base_url,
+    authority_public_key=_settings.academic_authority_public_key,
+    authority_private_key=_settings.academic_authority_private_key,
+)
