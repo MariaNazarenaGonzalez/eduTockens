@@ -54,7 +54,8 @@ async function loadProducts() {
 }
 
 /**
- * Renderizar productos en grid
+ * Renderizar productos en grid.
+ * Reemplaza los skeletons (que se sobreescriben con innerHTML).
  */
 function renderProducts(products) {
   const grid = document.getElementById('products-grid');
@@ -67,7 +68,7 @@ function renderProducts(products) {
   const emojis = ['🍕', '☕', '🍰', '🥤', '🍪', '📚', '💻', '⏰'];
 
   grid.innerHTML = products.map((product, idx) => `
-    <div class="product-card" onclick="selectProduct(${product.id})">
+    <div class="product-card stagger-item" onclick="selectProduct(${product.id})">
       <div class="product-img" style="background: linear-gradient(135deg, #EEF2FF, #F5F3FF);">
         ${emojis[idx % emojis.length]}
       </div>

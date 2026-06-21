@@ -7,89 +7,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Compra - EduTokens</title>
   <link rel="stylesheet" href="../css/styles.css">
-  <style>
-    /* ── Password Modal ── */
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.6);
-      backdrop-filter: blur(4px);
-      z-index: 200;
-      align-items: center;
-      justify-content: center;
-    }
-    .modal-overlay.show {
-      display: flex;
-    }
-    .modal-dialog {
-      background: var(--card);
-      border-radius: var(--radius);
-      padding: 24px;
-      width: calc(100% - 48px);
-      max-width: 360px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-      animation: modalIn 0.2s ease;
-    }
-    @keyframes modalIn {
-      from { opacity: 0; transform: translateY(16px) scale(0.97); }
-      to   { opacity: 1; transform: translateY(0) scale(1); }
-    }
-    .modal-dialog h3 {
-      font-size: 16px;
-      font-weight: 600;
-      margin-bottom: 8px;
-    }
-    .modal-dialog p {
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-bottom: 16px;
-      line-height: 1.5;
-    }
-    .modal-dialog .input {
-      width: 100%;
-      margin-bottom: 16px;
-    }
-    .modal-actions {
-      display: flex;
-      gap: 10px;
-    }
-    .modal-actions button {
-      flex: 1;
-      margin: 0;
-    }
-
-    /* ── Loading overlay ── */
-    .loading-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.5);
-      backdrop-filter: blur(3px);
-      z-index: 300;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      gap: 16px;
-    }
-    .loading-overlay.show {
-      display: flex;
-    }
-    .loading-spinner-ring {
-      width: 40px;
-      height: 40px;
-      border: 3px solid rgba(255,255,255,0.2);
-      border-top-color: var(--primary);
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .loading-text {
-      color: white;
-      font-size: 13px;
-      font-weight: 500;
-    }
-  </style>
 </head>
 
 <body>
@@ -102,11 +19,11 @@
     </div>
 
     <!-- Main Content -->
-    <div style="flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 80px;">
+    <div class="screen active content">
       <div id="error-msg" class="error-msg"></div>
 
       <!-- Product Summary -->
-      <div style="background: var(--bg); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+      <div class="card" style="margin-bottom: 20px;">
         <div style="display: flex; align-items: center; gap: 16px;">
           <div id="product-emoji" style="font-size: 40px;">🛍️</div>
           <div>
@@ -118,13 +35,11 @@
 
       <!-- Purchase Details -->
       <div class="card">
-        <div
-          style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px;">
+        <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px;">
           <span style="color: var(--text-muted);">Precio:</span>
           <span id="product-price" style="font-weight: 600;">0 pts</span>
         </div>
-        <div
-          style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px;">
+        <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px;">
           <span style="color: var(--text-muted);">Tu saldo:</span>
           <span id="current-balance" style="font-weight: 600; color: var(--primary);">0 pts</span>
         </div>
@@ -134,31 +49,25 @@
         </div>
       </div>
 
-      <!-- Warning if insufficient balance -->
-      <div id="insufficient-warning"
-        style="background: #FEF9C3; border: 1px solid #FECDD3; color: #854D0E; padding: 12px 14px; border-radius: 10px; margin: 16px 0; font-size: 13px; display: none;">
+      <!-- Insufficient balance warning -->
+      <div id="insufficient-warning" style="background: var(--warning-bg); border: 1px solid #FDE68A; color: #92400E; padding: 12px 14px; border-radius: 10px; margin: 16px 0; font-size: 13px; display: none;">
         ⚠️ Tu saldo es insuficiente para realizar esta compra.
       </div>
 
       <!-- Action Buttons -->
-      <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 32px;">
-        <button id="confirm-btn" class="btn btn-primary" style="width: 100%; margin: 0;" onclick="confirmPurchase()">
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 24px;">
+        <button id="confirm-btn" class="btn btn-primary" style="width: 100%;" onclick="confirmPurchase()">
           Confirmar Compra
         </button>
-        <button class="btn btn-outline" style="width: 100%; margin: 0;" onclick="history.back()">
+        <button class="btn btn-outline" style="width: 100%;" onclick="history.back()">
           Cancelar
         </button>
       </div>
 
       <!-- Blockchain Info -->
-      <div style="background: #0F172A; color: #E2E8F0; border-radius: 10px; padding: 16px; margin-top: 32px;">
-        <p
-          style="font-size: 11px; color: #64748B; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;">
-          ℹ️ Sobre esta transacción</p>
-        <p style="font-size: 12px; line-height: 1.6;">
-          Esta compra será registrada como una transacción SPEND en la blockchain distribuida, firmada con tu clave
-          privada en este navegador. El registro es inmutable y auditable de forma permanente.
-        </p>
+      <div class="info-box-dark" style="margin-top: 32px;">
+        <p class="info-box-label">ℹ️ Sobre esta transacción</p>
+        <p>Esta compra será registrada como una transacción SPEND en la blockchain distribuida, firmada con tu clave privada en este navegador. El registro es inmutable y auditable de forma permanente.</p>
       </div>
     </div>
   </div>
@@ -170,15 +79,15 @@
       <p>Ingresá tu contraseña para descifrar tu clave privada y firmar la transacción SPEND. Tu clave nunca sale de este navegador.</p>
       <input type="password" id="modal-password" class="input" placeholder="Tu contraseña" autocomplete="current-password">
       <div class="modal-actions">
-        <button class="btn btn-outline" onclick="closePasswordModal()" style="margin: 0;">Cancelar</button>
-        <button class="btn btn-primary" id="modal-confirm-btn" onclick="confirmWithPassword()" style="margin: 0;">Firmar y Comprar</button>
+        <button class="btn btn-outline" onclick="closePasswordModal()">Cancelar</button>
+        <button class="btn btn-primary" id="modal-confirm-btn" onclick="confirmWithPassword()">Firmar y Comprar</button>
       </div>
     </div>
   </div>
 
-  <!-- ── Loading Overlay ── -->
+  <!-- ── Loading Overlay (unificado) ── -->
   <div id="loading-overlay" class="loading-overlay">
-    <div class="loading-spinner-ring"></div>
+    <div class="spinner-ring"></div>
     <div class="loading-text" id="loading-text">Firmando transacción...</div>
   </div>
 

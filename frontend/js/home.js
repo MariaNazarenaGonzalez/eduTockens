@@ -64,20 +64,28 @@ async function loadTransactions() {
 }
 
 /**
- * Renderizar transacciones en la UI
+ * Renderizar transacciones en la UI.
+ * Usa íconos SVG direccionales: ↑ verde (EARN), ↓ rojo (SPEND).
  */
 function renderTransactions(transactions) {
+  // Ocultar skeleton
+  const skeleton = document.getElementById('tx-skeleton');
+  if (skeleton) skeleton.style.display = 'none';
+
   const container = document.getElementById('transactions-list');
 
   if (!transactions || transactions.length === 0) {
-    container.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 13px;">Sin transacciones</div>';
+    container.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 13px;">Sin transacciones aún</div>';
     return;
   }
 
+  const arrowUp = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 3v12M5 7l4-4 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const arrowDown = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 15V3M5 11l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
   container.innerHTML = transactions.map(tx => `
-    <div class="tx-item" onclick="viewTransaction('${tx.id}')">
+    <div class="tx-item stagger-item">
       <div class="tx-icon ${tx.tx_type === 'EARN' ? 'income' : 'expense'}">
-        ${tx.tx_type === 'EARN' ? '📈' : '📉'}
+        ${tx.tx_type === 'EARN' ? arrowUp : arrowDown}
       </div>
       <div class="tx-info">
         <div class="tx-name">${tx.concept || tx.tx_type}</div>
@@ -90,13 +98,4 @@ function renderTransactions(transactions) {
   `).join('');
 }
 
-/**
- * Ver detalle de una transacción
- */
-function viewTransaction(txId) {
-  // TODO: Implementar vista de detalle de transacción
-  console.log('Viewing transaction:', txId);
-}
-
-// Inicializar dashboard al cargar la página
 window.addEventListener('DOMContentLoaded', initDashboard);

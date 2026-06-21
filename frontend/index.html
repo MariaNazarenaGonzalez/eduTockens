@@ -8,50 +8,52 @@
 </head>
 <body>
   <div class="app">
-    <div class="screen active" style="padding: 0; display: flex; flex-direction: column;">
+    <div class="screen active" style="padding: 0; overflow-y: auto;">
       <!-- Hero Section -->
-      <div style="background: linear-gradient(135deg, #5B5BF7 0%, #7C3AED 100%); color: white; padding: 60px 30px; text-align: center;">
-        <div style="font-size: 64px; margin-bottom: 16px;">🎓</div>
-        <h1 style="font-size: 32px; font-weight: 700; margin-bottom: 12px;">EduTokens</h1>
-        <p style="font-size: 16px; opacity: 0.9;">Tu wallet educativa universitaria</p>
-        <p style="font-size: 13px; opacity: 0.7; margin-top: 12px; max-width: 300px; margin-left: auto; margin-right: auto;">
+      <div class="landing-hero">
+        <div style="font-size: 64px; margin-bottom: 12px;">🎓</div>
+        <h1 style="font-size: 32px; font-weight: 700; margin-bottom: 10px;">EduTokens</h1>
+        <p style="font-size: 16px; opacity: 0.9; margin-bottom: 10px;">Tu wallet educativa universitaria</p>
+        <p style="font-size: 13px; opacity: 0.7; max-width: 300px; margin: 0 auto; line-height: 1.5;">
           Acumula puntos académicos completando actividades y canjéalos por servicios en el campus
         </p>
       </div>
 
       <!-- Features -->
-      <div style="flex: 1; padding: 40px 20px; overflow-y: auto;">
+      <div class="content">
         <div style="margin-bottom: 32px;">
-          <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 20px; color: var(--text);">¿Cómo funciona?</h2>
-          
-          <div style="display: flex; gap: 16px; margin-bottom: 20px;">
-            <div style="width: 44px; height: 44px; background: linear-gradient(135deg, #5B5BF7, #7C3AED); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; flex-shrink: 0;">1</div>
-            <div>
-              <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--text);">Participación Académica</h3>
-              <p style="font-size: 13px; color: var(--text-muted);">Gana puntos por asistencia, participación, parciales, trabajos prácticos y más actividades.</p>
-            </div>
-          </div>
+          <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 20px;">¿Cómo funciona?</h2>
 
-          <div style="display: flex; gap: 16px; margin-bottom: 20px;">
-            <div style="width: 44px; height: 44px; background: linear-gradient(135deg, #5B5BF7, #7C3AED); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; flex-shrink: 0;">2</div>
-            <div>
-              <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--text);">Registro en Blockchain</h3>
-              <p style="font-size: 13px; color: var(--text-muted);">Cada transacción se registra de forma inmutable en la cadena de bloques distribuida.</p>
+          <div class="stagger-container">
+            <div class="stagger-item" style="display: flex; gap: 16px; margin-bottom: 20px;">
+              <div class="avatar" style="width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;">1</div>
+              <div>
+                <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Participación Académica</h3>
+                <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">Gana puntos por asistencia, participación, parciales, trabajos prácticos y más actividades.</p>
+              </div>
             </div>
-          </div>
 
-          <div style="display: flex; gap: 16px;">
-            <div style="width: 44px; height: 44px; background: linear-gradient(135deg, #5B5BF7, #7C3AED); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; flex-shrink: 0;">3</div>
-            <div>
-              <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--text);">Canjea en el Campus</h3>
-              <p style="font-size: 13px; color: var(--text-muted);">Usa tus puntos para acceder a máquinas expendedoras, fotocopiadoras y otros servicios.</p>
+            <div class="stagger-item" style="display: flex; gap: 16px; margin-bottom: 20px;">
+              <div class="avatar" style="width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;">2</div>
+              <div>
+                <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Registro en Blockchain</h3>
+                <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">Cada transacción se registra de forma inmutable en la cadena de bloques distribuida.</p>
+              </div>
+            </div>
+
+            <div class="stagger-item" style="display: flex; gap: 16px;">
+              <div class="avatar" style="width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;">3</div>
+              <div>
+                <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Canjea en el Campus</h3>
+                <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">Usa tus puntos para acceder a máquinas expendedoras, fotocopiadoras y otros servicios.</p>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- Benefits -->
-        <div style="background: #F0FDF4; border-radius: 12px; padding: 20px; margin-bottom: 32px;">
-          <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #166534;">✓ Beneficios</h3>
+        <div class="card" style="background: var(--success-bg); border-color: #BBF7D0; margin-bottom: 16px;">
+          <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--success);">✓ Beneficios</h3>
           <ul style="list-style: none;">
             <li style="font-size: 13px; color: #166534; margin-bottom: 8px;">• Transparencia total: auditoría completa del historial</li>
             <li style="font-size: 13px; color: #166534; margin-bottom: 8px;">• Seguridad: ningún actor puede alterar el registro retroactivamente</li>
@@ -62,13 +64,9 @@
       </div>
 
       <!-- Action Buttons -->
-      <div style="padding: 20px; border-top: 1px solid var(--border); display: flex; gap: 12px;">
-        <button onclick="location.href='pages/login.html'" class="btn btn-primary" style="flex: 1; margin: 0;">
-          Ingresar
-        </button>
-        <button onclick="location.href='pages/register.html'" class="btn btn-outline" style="flex: 1; margin: 0;">
-          Registrarse
-        </button>
+      <div style="padding: 16px 20px; border-top: 1px solid var(--border); display: flex; gap: 12px; background: var(--card);">
+        <button onclick="location.href='pages/login.html'" class="btn btn-primary" style="flex: 1;">Ingresar</button>
+        <button onclick="location.href='pages/register.html'" class="btn btn-outline" style="flex: 1;">Registrarse</button>
       </div>
     </div>
   </div>

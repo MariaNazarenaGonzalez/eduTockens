@@ -24,13 +24,7 @@ function switchTab(tab) {
   TABS.forEach((t) => {
     document.getElementById(`${t}-section`).style.display = t === tab ? 'block' : 'none';
     const tabBtn = document.getElementById(`tab-${t}`);
-    if (t === tab) {
-      tabBtn.style.color = 'var(--primary)';
-      tabBtn.style.borderBottom = '2px solid var(--primary)';
-    } else {
-      tabBtn.style.color = 'var(--text-muted)';
-      tabBtn.style.borderBottom = '2px solid transparent';
-    }
+    tabBtn.classList.toggle('active', t === tab);
   });
 
   if (tab === 'products') loadProducts();

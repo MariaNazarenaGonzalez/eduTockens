@@ -19,7 +19,7 @@
     </div>
 
     <!-- Main Content -->
-    <div style="flex: 1; overflow-y: auto; padding: 0 20px; padding-bottom: 80px;">
+    <div class="screen active content">
       <!-- Statistics Grid -->
       <div class="admin-grid">
         <div class="admin-stat">
@@ -44,20 +44,11 @@
       <div id="success-msg" class="success-msg"></div>
 
       <!-- Tabs -->
-      <div
-        style="display: flex; gap: 12px; margin-bottom: 20px; border-bottom: 2px solid var(--border); padding-bottom: 12px;">
-        <button id="tab-emit"
-          style="flex: 1; padding: 10px; text-align: center; border: none; background: none; color: var(--primary); font-weight: 600; border-bottom: 2px solid var(--primary); font-family: 'DM Sans', sans-serif; cursor: pointer;"
-          onclick="switchTab('emit')">Emitir Puntos</button>
-        <button id="tab-products"
-          style="flex: 1; padding: 10px; text-align: center; border: none; background: none; color: var(--text-muted); font-weight: 600; border-bottom: 2px solid transparent; font-family: 'DM Sans', sans-serif; cursor: pointer;"
-          onclick="switchTab('products')">Productos</button>
-        <button id="tab-vendors"
-          style="flex: 1; padding: 10px; text-align: center; border: none; background: none; color: var(--text-muted); font-weight: 600; border-bottom: 2px solid transparent; font-family: 'DM Sans', sans-serif; cursor: pointer;"
-          onclick="switchTab('vendors')">Vendors</button>
-        <button id="tab-logs"
-          style="flex: 1; padding: 10px; text-align: center; border: none; background: none; color: var(--text-muted); font-weight: 600; border-bottom: 2px solid transparent; font-family: 'DM Sans', sans-serif; cursor: pointer;"
-          onclick="switchTab('logs')">Logs</button>
+      <div class="tabs-bar">
+        <button id="tab-emit" class="tab active" onclick="switchTab('emit')">Emitir Puntos</button>
+        <button id="tab-products" class="tab" onclick="switchTab('products')">Productos</button>
+        <button id="tab-vendors" class="tab" onclick="switchTab('vendors')">Vendors</button>
+        <button id="tab-logs" class="tab" onclick="switchTab('logs')">Logs</button>
       </div>
 
       <!-- Emit Tab -->
