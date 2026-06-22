@@ -73,10 +73,16 @@ class NCTClient:
             raise NCTError(f"Error consultando balance en el NCT: {exc}") from exc
 
     async def get_account(self, pubkey: str) -> dict:
-        """GET /account/{pubkey} → {"address", "balance", "nonce", "discarded_transactions"}.
+        """GET /account/{pubkey} → {"address", "balance", "nonce", "pending_nonce", "discarded_transactions"}.
 
         Este es el endpoint que SIEMPRE hay que consultar antes de firmar
-        una transacción nueva, para obtener el `nonce` esperado.
+        una transacción nueva.
+
+        IMPORTANTE: usar siempre ``pending_nonce`` (no ``nonce``) como nonce
+        de la próxima transacción. ``pending_nonce`` considera las transacciones
+        que ya enviaste y están en el pool; ``nonce`` es el confirmado en cadena
+        y solo avanza cuando se mina un bloque. Usar ``nonce`` cuando hay
+        transacciones pendientes produce error de replay.
         """
         try:
             response = await self.client.get(f"/account/{pubkey}")
@@ -139,9 +145,11 @@ class NCTClient:
                 "no están configuradas en el backend"
             )
 
-        # 1. Nonce actual de la autoridad (puede haber avanzado por EARNs previos)
+        # 1. Nonce actual de la autoridad (pending_nonce considera EARNs
+        #    previos que aún no fueron minados — la regla de oro del NCT:
+        #    «siempre usá pending_nonce, nunca nonce, al construir una tx nueva»).
         account = await self.get_account(sender_pubkey)
-        nonce = account["nonce"]
+        nonce = account["pending_nonce"]
 
         # 2. Calcular tx_id — NOTA: timestamp NO participa del hash (ver
         #    shared/block.py Transaction._signing_dict: se fija

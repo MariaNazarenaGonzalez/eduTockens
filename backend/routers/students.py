@@ -40,7 +40,8 @@ async def get_balance(legajo: str, db: AsyncSession = Depends(get_db)) -> Balanc
         legajo=student.legajo,
         public_key=student.public_key,
         balance=account["balance"],
-        nonce=account["nonce"],
+        nonce=account.get("nonce", 0),
+        pending_nonce=account.get("pending_nonce", account.get("nonce", 0)),
     )
 
 

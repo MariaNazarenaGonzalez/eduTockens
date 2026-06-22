@@ -229,7 +229,14 @@ class BalanceResponse(BaseModel):
     legajo: str
     public_key: str
     balance: int
-    nonce: int
+    nonce: int = Field(description="Nonce confirmado on-chain (solo para debug/UI)")
+    pending_nonce: int = Field(
+        description=(
+            "Nonce que DEBE usarse en la próxima transacción. Considera las txs "
+            "ya enviadas al pool. Regla de oro: siempre usar pending_nonce, "
+            "nunca nonce, al construir una tx nueva."
+        )
+    )
 
 
 # ---------------------------------------------------------------------------

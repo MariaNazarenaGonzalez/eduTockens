@@ -153,7 +153,10 @@ async function confirmWithPassword() {
   // 2. Armar signing dict y firmar
   showLoading('Firmando transacción SPEND...');
   const timestamp = Date.now() / 1000;
-  const nonce = account.nonce;
+  // Regla de oro del NCT: siempre pending_nonce, nunca nonce.
+  // pending_nonce considera las txs ya enviadas al pool; nonce es
+  // el confirmado on-chain y puede causar "nonce already consumed".
+  const nonce = account.pending_nonce;
   const amount = Math.trunc(product.price_points);
 
   const signingBody = {

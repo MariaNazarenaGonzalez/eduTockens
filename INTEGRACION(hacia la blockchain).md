@@ -96,3 +96,30 @@ print(priv.public_key().public_bytes_raw().hex())
 - Confirmación de compra: "best effort" — un 201 del NCT se considera éxito;
   no se espera a que la tx sea minada; no se duplica la validación de saldo
   en el backend (se delega 100% al NCT).
+
+## Changelog post-Phase 1 (2026-06-22) — `pending_nonce`
+
+El NCT ahora soporta envío de múltiples transacciones sin bloquear (nonces
+consecutivos en el pool). `GET /account/{pubkey}` expone dos nonces:
+
+- **`nonce`**: confirmado on-chain (solo avanza al minar un bloque).
+- **`pending_nonce`**: el que DEBE usarse para la próxima transacción. Considera
+  las txs ya enviadas al pool.
+
+**Regla de oro**: siempre usar `pending_nonce`, nunca `nonce`, al construir una
+transacción nueva.
+
+### Cambios aplicados
+
+| Archivo | Cambio |
+|---|---|
+| `backend/services/nct_client.py` | `emit_earn()` usa `account["pending_nonce"]` en vez de `account["nonce"]`. Docstring de `get_account()` actualizado. |
+| `backend/schemas/schemas.py` | `BalanceResponse` ahora incluye `pending_nonce: int` (el frontend debe usar este campo para firmar). `nonce` se mantiene para display/debug. |
+| `backend/routers/students.py` | `GET /students/{legajo}/balance` expone `pending_nonce` (con fallback a `nonce` si el NCT es antiguo). |
+| `frontend/js/purchase.js` | `confirmWithPassword()` usa `account.pending_nonce` en vez de `account.nonce` para armar el signing dict del SPEND. |
+
+### Qué NO hacer
+
+- ❌ Usar `nonce` en vez de `pending_nonce` — si hay txs pendientes en el pool, `nonce` no avanzó y dará error de replay ("nonce already consumed").
+- ❌ Dejar huecos (gaps) en los nonces — si enviás nonce 5 y después nonce 7, la tx con nonce 7 nunca se minará hasta que envíes la tx con nonce 6. `pending_nonce` apuntará al hueco para que sepas qué falta.
+- ❌ Usar el mismo nonce dos veces — solo una tx por nonce por sender. La segunda será descartada.
