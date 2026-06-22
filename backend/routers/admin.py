@@ -1,7 +1,9 @@
 # DEO GLORIA
 
-"""Endpoints de administración: emisión de puntos (EARN), gestión de vendors
-y productos, estadísticas globales.
+"""Endpoints de administración: emisión de puntos (EARN vía relay),
+resolución legajo→pubkey, gestión de vendors y productos,
+estadísticas globales.  El backend NO firma EARN — lo hace la
+wallet del admin en el navegador.
 
 Todos requieren rol admin (Depends(get_current_admin)).
 """
@@ -9,6 +11,7 @@ Todos requieren rol admin (Depends(get_current_admin)).
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -19,8 +22,6 @@ from core.security import get_current_admin
 from models.models import Product, Purchase, TransactionLog, User, Vendor
 from schemas.schemas import (
     AdminStats,
-    EarnRequest,
-    EarnResponse,
     ProductCreate,
     ProductResponse,
     ProductUpdate,
@@ -34,43 +35,44 @@ router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(get_cu
 
 
 # ---------------------------------------------------------------------------
-# EARN — el backend arma y firma con la clave de ACADEMIC_SYSTEM
+# Resolve — traduce legajo → pubkey para la wallet del admin
 # ---------------------------------------------------------------------------
 
 
-@router.post("/earn", response_model=EarnResponse)
-async def emit_earn(body: EarnRequest, db: AsyncSession = Depends(get_db)) -> EarnResponse:
-    result = await db.execute(select(User).where(User.legajo == body.legajo))
+class ResolveResponse(BaseModel):
+    public_key: str
+    student_name: str
+
+
+@router.get("/resolve", response_model=ResolveResponse)
+async def resolve_legajo(legajo: str, db: AsyncSession = Depends(get_db)) -> ResolveResponse:
+    """Traduce un legajo a su clave pública.  Lo usa la wallet del admin
+    para saber a qué pubkey emitir un EARN.
+    """
+    result = await db.execute(select(User).where(User.legajo == legajo))
     student = result.scalar_one_or_none()
     if student is None:
-        raise HTTPException(status_code=404, detail=f"No existe un estudiante con legajo {body.legajo}")
+        raise HTTPException(status_code=404, detail=f"No existe un estudiante con legajo {legajo}")
+
+    return ResolveResponse(public_key=student.public_key, student_name=student.name)
+
+
+# ---------------------------------------------------------------------------
+# Account — nonce de la autoridad para que la wallet del admin pueda firmar
+# ---------------------------------------------------------------------------
+
+
+@router.get("/account")
+async def admin_account() -> dict:
+    """Devuelve la cuenta NCT de la autoridad académica (balance + pending_nonce).
+    La wallet del admin necesita el nonce antes de firmar un EARN.
+    """
+    from core.config import settings
 
     try:
-        nct_result = await nct_client.emit_earn(
-            receiver_pubkey=student.public_key,
-            amount=body.amount,
-            concept=body.concept,
-        )
+        return await nct_client.get_account(settings.authority_public_key)
     except NCTError as exc:
-        raise HTTPException(status_code=502, detail=f"NCT rechazó la transacción: {exc}") from exc
-
-    tx_id = nct_result["tx_id"]
-
-    db.add(
-        TransactionLog(
-            user_id=student.id,
-            tx_type="EARN",
-            counterparty_pubkey=student.public_key,
-            amount=int(body.amount),
-            concept=body.concept,
-            nct_tx_id=tx_id,
-        )
-    )
-    await db.commit()
-
-    return EarnResponse(
-        tx_id=tx_id, legajo=body.legajo, amount=body.amount, concept=body.concept
-    )
+        raise HTTPException(status_code=502, detail=f"No se pudo consultar el NCT: {exc}")
 
 
 # ---------------------------------------------------------------------------

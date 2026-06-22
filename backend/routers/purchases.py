@@ -67,15 +67,16 @@ async def create_purchase(
     # producto en DB — el cliente no los manda. Si el frontend firmó con
     # otros valores, el tx_id no va a coincidir y el NCT rechazará la firma.
     try:
-        nct_result = await nct_client.submit_signed_spend(
-            sender_pubkey=current_user.public_key,
-            receiver_pubkey=vendor.public_key,
-            amount=int(product.price_points),
-            concept=product.name,
-            nonce=body.nonce,
-            timestamp=body.timestamp,
-            signature=body.signature,
-        )
+        nct_result = await nct_client.relay_transaction({
+            "sender_pubkey": current_user.public_key,
+            "receiver_pubkey": vendor.public_key,
+            "amount": int(product.price_points),
+            "tx_type": "SPEND",
+            "concept": product.name,
+            "nonce": body.nonce,
+            "timestamp": body.timestamp,
+            "signature": body.signature,
+        })
     except NCTError as exc:
         # 400 del NCT (firma inválida, nonce desincronizado, saldo
         # insuficiente al momento del bloque, etc.) → se traduce a 400

@@ -10,9 +10,8 @@
 //
 // Dependencias (cargadas antes en el HTML):
 //   common.js      — getToken, getCurrentUser, requireAuth, getAuthHeaders
-//   crypto-auth.js — signChallengeWithPrivateKey
 //   wallet-crypto.js — decryptStoredPrivateKey
-//   tx-signer.js   — computeTxId
+//   wallet.js      — EduWallet.signTransaction()
 
 requireAuth();
 
@@ -170,8 +169,8 @@ async function confirmWithPassword() {
 
   let signature;
   try {
-    const txId = await computeTxId(signingBody);
-    signature = await signChallengeWithPrivateKey(privateKeyHex, txId);
+    const { signature: sig } = await EduWallet.signTransaction(signingBody, privateKeyHex);
+    signature = sig;
   } catch (error) {
     hideLoading();
     showError('error-msg', 'No se pudo firmar la transacción. Verificá tu clave privada.');

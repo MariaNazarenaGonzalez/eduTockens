@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from core.database import init_db
-from routers import admin, auth, products, purchases, students, users
+from routers import admin, auth, products, purchases, relay, students, users
 
 
 @asynccontextmanager
@@ -32,6 +32,7 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(products.router, prefix="/api")
 app.include_router(purchases.router, prefix="/api")
+app.include_router(relay.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
 app.include_router(students.router, prefix="/api")
 

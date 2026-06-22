@@ -190,25 +190,6 @@ class PurchaseLogResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Earn — el backend arma y firma con la clave de ACADEMIC_SYSTEM.
-# El admin NO firma client-side para esto.
-# ---------------------------------------------------------------------------
-
-
-class EarnRequest(BaseModel):
-    legajo: str = Field(min_length=1, max_length=20)
-    amount: int = Field(gt=0, le=1_000_000_000)
-    concept: str = Field(min_length=1, max_length=128)
-
-
-class EarnResponse(BaseModel):
-    tx_id: str
-    legajo: str
-    amount: int
-    concept: str
-
-
-# ---------------------------------------------------------------------------
 # Transactions log (historial)
 # ---------------------------------------------------------------------------
 
@@ -237,6 +218,66 @@ class BalanceResponse(BaseModel):
             "nunca nonce, al construir una tx nueva."
         )
     )
+
+
+# ---------------------------------------------------------------------------
+# Relay — endpoint unificado para EARN y SPEND. El backend NO firma,
+# solo reenvía transacciones YA FIRMADAS al NCT y registra en DB.
+# ---------------------------------------------------------------------------
+
+
+class RelayRequest(BaseModel):
+    """Transacción completamente firmada que el backend solo reenvía al NCT.
+
+    Tanto EARN como SPEND llegan por este mismo endpoint. La diferencia
+    la determina `tx_type` y la valida el NCT (el EARN solo es aceptado
+    si sender_pubkey == AUTHORITY_PUBKEY).
+    """
+
+    sender_pubkey: str = Field(description="64 hex chars — quien envía los tokens")
+    receiver_pubkey: str = Field(description="64 hex chars — quien recibe los tokens")
+    amount: int = Field(gt=0, le=1_000_000_000)
+    tx_type: str = Field(description='"EARN" o "SPEND"')
+    concept: str = Field(min_length=1, max_length=128)
+    nonce: int = Field(ge=0)
+    timestamp: float = Field(gt=0)
+    signature: str = Field(description="128 hex chars — firma Ed25519 sobre tx_id")
+
+    @field_validator("sender_pubkey")
+    @classmethod
+    def _validate_sender_pubkey(cls, v: str) -> str:
+        from core.crypto import is_valid_pubkey_hex
+        if not is_valid_pubkey_hex(v):
+            raise ValueError("sender_pubkey debe ser 64 caracteres hex lowercase")
+        return v
+
+    @field_validator("receiver_pubkey")
+    @classmethod
+    def _validate_receiver_pubkey(cls, v: str) -> str:
+        from core.crypto import is_valid_pubkey_hex
+        if not is_valid_pubkey_hex(v):
+            raise ValueError("receiver_pubkey debe ser 64 caracteres hex lowercase")
+        return v
+
+    @field_validator("tx_type")
+    @classmethod
+    def _validate_tx_type(cls, v: str) -> str:
+        if v not in ("EARN", "SPEND"):
+            raise ValueError('tx_type debe ser "EARN" o "SPEND"')
+        return v
+
+    @field_validator("signature")
+    @classmethod
+    def _validate_signature(cls, v: str) -> str:
+        from core.crypto import is_valid_signature_hex
+        if not is_valid_signature_hex(v):
+            raise ValueError("signature debe ser 128 caracteres hex lowercase")
+        return v
+
+
+class RelayResponse(BaseModel):
+    tx_id: str
+    message: str = "Transacción aceptada por el NCT"
 
 
 # ---------------------------------------------------------------------------

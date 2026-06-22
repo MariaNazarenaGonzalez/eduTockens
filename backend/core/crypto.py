@@ -2,15 +2,14 @@
 
 """Criptografía Ed25519 para eduTockens.
 
-Este módulo centraliza todas las operaciones de clave pública que el backend
+Este módulo centraliza las operaciones de clave pública que el backend
 necesita para integrarse con el NCT:
 
-- Verificar firmas (login/register de usuarios, transacciones SPEND).
-- Firmar transacciones EARN en nombre de ACADEMIC_SYSTEM (la única clave
-  privada que el backend conoce y usa).
+- Verificar firmas (login/register de usuarios).
 - Generar keypairs para vendors (se descarta la privada al instante).
-- Calcular `tx_id` exactamente como lo hace el NCT (SHA-256 del signing dict
-  canónico, sort_keys=True, incluyendo `nonce`).
+- Calcular `tx_id` exactamente como lo hace el NCT (SHA-256 del signing
+  dict canónico, sort_keys=True, incluyendo `nonce`).  El backend ya no
+  firma transacciones — las wallets del frontend lo hacen.
 
 Todas las claves/firmas se manejan como strings hex lowercase, igual que en
 la wire format del NCT:
@@ -101,31 +100,8 @@ def compute_tx_id(
 
 
 # ---------------------------------------------------------------------------
-# Firma / verificación
+# Verificación de firmas
 # ---------------------------------------------------------------------------
-
-
-def sign_message(private_key_hex: str, message: str) -> str:
-    """Firma `message` (un string, se codifica a UTF-8) con una privkey Ed25519 hex.
-
-    Usado para:
-    - Firmar el `tx_id` de transacciones EARN (ACADEMIC_SYSTEM).
-
-    Devuelve la firma como 128 hex chars.
-    """
-    try:
-        priv_bytes = bytes.fromhex(private_key_hex)
-    except ValueError as exc:
-        raise CryptoError(f"private key inválida (no es hex): {exc}") from exc
-
-    if len(priv_bytes) != 32:
-        raise CryptoError(
-            f"private key debe ser 32 bytes (64 hex chars), got {len(priv_bytes)} bytes"
-        )
-
-    private_key = Ed25519PrivateKey.from_private_bytes(priv_bytes)
-    signature = private_key.sign(message.encode("utf-8"))
-    return signature.hex()
 
 
 def verify_signature(public_key_hex: str, message: str, signature_hex: str) -> bool:

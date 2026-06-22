@@ -3,13 +3,16 @@
 // admin.js — Panel de administración: estadísticas, emisión de puntos,
 // gestión de productos y vendors, logs de compras.
 //
-// EARN no se firma client-side: el admin no posee (ni necesita) la clave
-// privada de ACADEMIC_SYSTEM — esa vive únicamente en el backend
-// (env/secret). El admin solo manda { legajo, amount, concept } y el
-// backend arma y firma la transacción EARN completa.
+// EARN con firma local: la wallet del admin firma en el browser.
+//    GET /admin/resolve?legajo= → pubkey
+//    GET /admin/account → nonce
+//    EduWallet.signTransaction(...) → firma
+//    POST /api/transactions/relay → NCT
 //
 // Dependencias (cargadas antes en el HTML):
-//   common.js — getToken, requireAuth, requireAdmin, getAuthHeaders, showError, showSuccess, logout, goTo
+//   common.js      — getToken, requireAuth, requireAdmin, getAuthHeaders, showError, showSuccess
+//   wallet-crypto.js — decryptStoredPrivateKey, hasStoredWallet
+//   wallet.js      — EduWallet.signTransaction, .loadPrivateKey, .getActivePublicKey
 
 requireAuth();
 requireAdmin();
@@ -52,10 +55,17 @@ async function loadStats() {
 }
 
 // ---------------------------------------------------------------------------
-// EARN
+// EARN — la wallet del admin firma en el browser
 // ---------------------------------------------------------------------------
 
-async function emitPoints() {
+/** Variables efímeras para el flujo de firma local (se limpian al cerrar). */
+let _pendingEarn = null;
+
+/**
+ * Abre el modal de contraseña.  Guarda los datos del formulario para usarlos
+ * al confirmar.
+ */
+async function emitPointsSigned() {
   const legajo = document.getElementById('emit-legajo').value.trim();
   const amountStr = document.getElementById('emit-amount').value;
   const concept = document.getElementById('emit-concept').value.trim();
@@ -71,28 +81,136 @@ async function emitPoints() {
     return;
   }
 
+  const user = getCurrentUser();
+
+  // ¿Tiene wallet el admin?
+  if (!EduWallet.hasStoredKey(user.legajo)) {
+    showError('error-msg',
+      'No tenés una wallet configurada en este navegador. ' +
+      'Generá un par de claves primero (usando la consola o una página de setup). ' +
+      'Tu clave pública debe ser la AUTHORITY_PUBKEY del NCT.'
+    );
+    return;
+  }
+
+  _pendingEarn = { legajo, amount, concept };
+  document.getElementById('modal-password').value = '';
+  document.getElementById('password-modal').style.display = 'flex';
+  document.getElementById('modal-password').focus();
+}
+
+function closePasswordModal() {
+  document.getElementById('password-modal').style.display = 'none';
+  _pendingEarn = null;
+}
+
+function showLoading(text) {
+  document.getElementById('loading-text').textContent = text;
+  document.getElementById('loading-overlay').style.display = 'flex';
+}
+
+function hideLoading() {
+  document.getElementById('loading-overlay').style.display = 'none';
+}
+
+async function confirmEarnWithPassword() {
+  const password = document.getElementById('modal-password').value;
+  if (!password) {
+    showError('error-msg', 'Ingresá tu contraseña');
+    return;
+  }
+
+  if (!_pendingEarn) {
+    closePasswordModal();
+    return;
+  }
+
+  const { legajo, amount, concept } = _pendingEarn;
+  const user = getCurrentUser();
+  const adminPubkey = EduWallet.getActivePublicKey() || user.public_key;
+
+  if (!adminPubkey) {
+    closePasswordModal();
+    showError('error-msg', 'No se encontró tu clave pública. Iniciá sesión de nuevo.');
+    return;
+  }
+
+  closePasswordModal();
+  showLoading('Resolviendo legajo...');
+
   try {
-    const response = await fetch(`${API_BASE_URL}/admin/earn`, {
+    // 1. Resolver legajo → pubkey del estudiante
+    const resolveRes = await fetch(`${API_BASE_URL}/admin/resolve?legajo=${legajo}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!resolveRes.ok) {
+      const err = await resolveRes.json();
+      throw new Error(err.detail || 'Legajo no encontrado');
+    }
+    const { public_key: studentPubkey, student_name } = await resolveRes.json();
+
+    // 2. Nonce del admin desde el NCT
+    showLoading('Consultando nonce...');
+    const accountRes = await fetch(`${API_BASE_URL}/admin/account`, {
+      headers: getAuthHeaders(),
+    });
+    if (!accountRes.ok) {
+      throw new Error('No se pudo consultar la cuenta de autoridad en el NCT');
+    }
+    const account = await accountRes.json();
+    const nonce = account.pending_nonce;
+
+    // 3. Descifrar clave privada del admin
+    showLoading('Descifrando clave privada...');
+    const privateKeyHex = await EduWallet.loadPrivateKey(user.legajo, password);
+
+    // 4. Firmar EARN
+    showLoading('Firmando transacción EARN...');
+    const { signature } = await EduWallet.signTransaction(
+      {
+        sender_pubkey: adminPubkey,
+        receiver_pubkey: studentPubkey,
+        amount,
+        tx_type: 'EARN',
+        concept,
+        nonce,
+      },
+      privateKeyHex
+    );
+
+    // 5. Enviar al relay
+    showLoading('Enviando al NCT...');
+    const relayRes = await fetch(`${API_BASE_URL}/transactions/relay`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ legajo, amount, concept }),
+      body: JSON.stringify({
+        sender_pubkey: adminPubkey,
+        receiver_pubkey: studentPubkey,
+        amount,
+        tx_type: 'EARN',
+        concept,
+        nonce,
+        timestamp: Date.now() / 1000,
+        signature,
+      }),
     });
 
-    const data = await response.json();
-    if (!response.ok) {
-      const detail = data.detail || 'Error al emitir puntos';
-      if (detail.includes('NCT')) {
-        throw new Error('El NCT rechazó la emisión. ¿Está corriendo? Error: ' + detail);
-      }
-      throw new Error(detail);
+    const relayData = await relayRes.json();
+
+    if (!relayRes.ok) {
+      throw new Error(relayData.detail || 'El NCT rechazó la transacción');
     }
 
-    showSuccess('success-msg', `Puntos emitidos. TX: ${data.tx_id}`);
+    hideLoading();
+    showSuccess('success-msg',
+      `✅ Emitidos ${amount} pts a ${student_name} (legajo ${legajo}). TX: ${relayData.tx_id}`
+    );
     document.getElementById('emit-legajo').value = '';
     document.getElementById('emit-amount').value = '';
     document.getElementById('emit-concept').value = '';
     loadStats();
   } catch (error) {
+    hideLoading();
     showError('error-msg', error.message);
   }
 }

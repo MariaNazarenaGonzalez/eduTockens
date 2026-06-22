@@ -25,17 +25,16 @@ class Settings(BaseSettings):
     nct_base_url: str = "http://nct:8080"
 
     # ------------------------------------------------------------------
-    # Autoridad académica (ACADEMIC_SYSTEM)
+    # Autoridad académica
     #
-    # El backend firma EARN en nombre de la universidad. Esta clave
-    # privada NUNCA debe loguearse ni exponerse en ninguna respuesta.
-    # `academic_authority_public_key` DEBE coincidir exactamente con
-    # AUTHORITY_PUBKEY configurado en el NCT (nct/.env) — si no coinciden,
-    # todo EARN será rechazado con 400 "EARN sender_pubkey does not match
-    # AUTHORITY_PUBKEY".
+    # Solo la clave pública. La clave privada NUNCA vive en el backend —
+    # el administrador firma EARN desde su wallet en el navegador.
+    #
+    # `authority_public_key` DEBE coincidir con AUTHORITY_PUBKEY del NCT
+    # (nct/.env). Se usa para consultar el nonce del admin vía
+    # GET /admin/account.
     # ------------------------------------------------------------------
-    academic_authority_private_key: str = ""
-    academic_authority_public_key: str = ""
+    authority_public_key: str = ""
 
     # ------------------------------------------------------------------
     # Auth — challenge firmado (Ed25519, sin password)

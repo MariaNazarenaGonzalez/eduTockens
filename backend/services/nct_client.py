@@ -2,44 +2,22 @@
 
 """Cliente HTTP para el NCT (Nodo Coordinador de Transacciones) — Pilar 2.
 
-Reemplaza por completo la implementación previa (placeholder), que usaba
-nombres de campo y un modelo de identidad incompatibles con el NCT real:
+Único punto de contacto entre el backend de aplicación y la blockchain.
+El backend NO conoce claves privadas — las wallets del frontend firman
+EARN y SPEND, y este cliente solo:
 
-    ANTES (incorrecto)          AHORA (NCT real)
-    ----------------------      --------------------------------
-    sender / receiver           sender_pubkey / receiver_pubkey (64 hex)
-    type                        tx_type ("EARN" | "SPEND")
-    (sin firma)                 signature (128 hex, Ed25519 sobre tx_id)
-    (sin nonce)                 nonce (replay protection, por cuenta)
-    "student:{legajo}" textual  pubkey real — el mapeo legajo↔pubkey lo
-                                 resuelve este backend contra su propia DB,
-                                 el NCT no conoce legajos ni vendor_ids.
-    GET /balance/{student_id}   GET /balance/{pubkey} y GET /account/{pubkey}
-    GET /transactions/{id}      (no existe en el NCT — el historial se
-                                 mantiene localmente en transactions_log)
+  - Consulta balances y cuentas (GET /balance, GET /account).
+  - Reenvía transacciones YA FIRMADAS al NCT (POST /transaction vía
+    relay_transaction).
 
-Dos flujos de firma MUY distintos:
-
-- EARN: este backend conoce la clave PRIVADA de ACADEMIC_SYSTEM (vive en
-  settings, nunca se loguea). `emit_earn()` arma la transacción completa:
-  consulta el nonce vía /account, construye el signing dict, calcula
-  tx_id, firma, y hace POST /transaction.
-
-- SPEND: el backend NUNCA tiene la clave privada del estudiante — eso
-  violaría el modelo de seguridad (la clave nunca debe salir del
-  navegador). `emit_spend()` por lo tanto NO firma nada: recibe una
-  transacción YA FIRMADA por el cliente (sender_pubkey, receiver_pubkey,
-  amount, concept, nonce, timestamp, signature) y solo la reenvía al NCT.
+El NCT no conoce legajos, productos ni vendors — solo pubkeys.
 """
 
 from __future__ import annotations
 
-import time
 from typing import Any, Optional
 
 from httpx import AsyncClient, HTTPError
-
-from core.crypto import compute_tx_id, sign_message
 
 
 class NCTError(Exception):
@@ -51,12 +29,11 @@ class NCTError(Exception):
 
 
 class NCTClient:
-    """Cliente HTTP asíncrono para el NCT."""
+    """Cliente HTTP asíncrono para el NCT (sin claves privadas)."""
 
-    def __init__(self, base_url: str, authority_public_key: str = "", authority_private_key: str = ""):
+    def __init__(self, base_url: str, authority_public_key: str = ""):
         self.base_url = base_url
         self.authority_public_key = authority_public_key
-        self.authority_private_key = authority_private_key
         self.client = AsyncClient(base_url=self.base_url, timeout=30.0)
 
     # ------------------------------------------------------------------
@@ -103,7 +80,7 @@ class NCTClient:
             raise NCTError(f"Error consultando la cadena en el NCT: {exc}") from exc
 
     # ------------------------------------------------------------------
-    # Escritura — POST /transaction
+    # Escritura unificada — POST /transaction
     # ------------------------------------------------------------------
 
     async def _post_transaction(self, payload: dict[str, Any]) -> dict:
@@ -123,98 +100,17 @@ class NCTClient:
 
         raise NCTError(message, status_code=response.status_code)
 
-    async def emit_earn(self, *, receiver_pubkey: str, amount: int, concept: str) -> dict:
-        """Emite una transacción EARN, firmada por este backend con la clave
-        privada de ACADEMIC_SYSTEM (settings.academic_authority_private_key).
+    async def relay_transaction(self, payload: dict[str, Any]) -> dict:
+        """Reenvía al NCT una transacción YA FIRMADA, sin distinguir EARN de SPEND.
 
-        El caller (router /admin/earn) es responsable de resolver
-        `legajo -> receiver_pubkey` contra la tabla `users` ANTES de llamar
-        a este método — este cliente no conoce legajos.
+        Este es el método unificado de escritura. Recibe el payload completo
+        tal como lo construyó la wallet del frontend (todos los campos del
+        signing dict + signature + timestamp) y lo reenvía textualmente al
+        NCT vía POST /transaction.
 
-        `amount` es un entero (unidad mínima de puntos, como el "wei" de
-        Ethereum) — así lo tipa `Transaction.amount: int` en shared/block.py.
-
-        Devuelve {"tx_id": "..."} en éxito. Lanza NCTError en caso de
-        rechazo (ej. nonce desincronizado, AUTHORITY_PUBKEY no configurada
-        en el NCT, etc.)
+        El backend NO firma, NO valida la firma, NO resuelve legajos. Solo
+        actúa como relay autenticado entre la wallet y el NCT.
         """
-        sender_pubkey = self.authority_public_key
-        if not sender_pubkey or not self.authority_private_key:
-            raise NCTError(
-                "ACADEMIC_AUTHORITY_PUBLIC_KEY / ACADEMIC_AUTHORITY_PRIVATE_KEY "
-                "no están configuradas en el backend"
-            )
-
-        # 1. Nonce actual de la autoridad (pending_nonce considera EARNs
-        #    previos que aún no fueron minados — la regla de oro del NCT:
-        #    «siempre usá pending_nonce, nunca nonce, al construir una tx nueva»).
-        account = await self.get_account(sender_pubkey)
-        nonce = account["pending_nonce"]
-
-        # 2. Calcular tx_id — NOTA: timestamp NO participa del hash (ver
-        #    shared/block.py Transaction._signing_dict: se fija
-        #    server-side al llegar el POST, así que el cliente no puede
-        #    predecirlo y se excluye deliberadamente del signing dict).
-        #    El campo SÍ se manda en el wire payload (Transaction.from_dict
-        #    lo lee), solo que no afecta tx_id ni la firma.
-        tx_id = compute_tx_id(
-            sender_pubkey=sender_pubkey,
-            receiver_pubkey=receiver_pubkey,
-            amount=amount,
-            tx_type="EARN",
-            concept=concept,
-            nonce=nonce,
-        )
-
-        # 3. Firmar tx_id con la clave privada de la autoridad
-        signature = sign_message(self.authority_private_key, tx_id)
-
-        # 4. POST al NCT
-        payload = {
-            "sender_pubkey": sender_pubkey,
-            "receiver_pubkey": receiver_pubkey,
-            "amount": amount,
-            "tx_type": "EARN",
-            "concept": concept,
-            "nonce": nonce,
-            "timestamp": time.time(),
-            "signature": signature,
-        }
-        return await self._post_transaction(payload)
-
-    async def submit_signed_spend(
-        self,
-        *,
-        sender_pubkey: str,
-        receiver_pubkey: str,
-        amount: int,
-        concept: str,
-        nonce: int,
-        timestamp: float,
-        signature: str,
-    ) -> dict:
-        """Reenvía al NCT una transacción SPEND YA FIRMADA por el cliente.
-
-        Este método NO firma nada — la clave privada del estudiante nunca
-        llega al backend. Todos los campos del signing dict (incluida la
-        firma) vienen del frontend, que los calculó con exactamente la
-        misma lógica que `core.crypto.compute_tx_id` (replica
-        Transaction._signing_dict de shared/block.py: amount es int,
-        timestamp NO participa del hash).
-
-        El backend solo agrega tx_type="SPEND" y reenvía. La validación
-        final y autoritativa (firma, nonce, saldo) la hace el NCT.
-        """
-        payload = {
-            "sender_pubkey": sender_pubkey,
-            "receiver_pubkey": receiver_pubkey,
-            "amount": amount,
-            "tx_type": "SPEND",
-            "concept": concept,
-            "nonce": nonce,
-            "timestamp": timestamp,
-            "signature": signature,
-        }
         return await self._post_transaction(payload)
 
     # ------------------------------------------------------------------
@@ -222,10 +118,10 @@ class NCTClient:
         await self.client.aclose()
 
 
-# Global NCT client instance
+# Global NCT client instance (sin clave privada)
 from core.config import settings as _settings
+
 nct_client = NCTClient(
     base_url=_settings.nct_base_url,
-    authority_public_key=_settings.academic_authority_public_key,
-    authority_private_key=_settings.academic_authority_private_key,
+    authority_public_key=_settings.authority_public_key,
 )
