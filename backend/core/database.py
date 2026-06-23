@@ -33,19 +33,14 @@ async def get_db() -> AsyncSession:
 async def init_db():
     """Inicializa la DB al arrancar.
 
-    Las tablas y roles ya fueron creados por init.sql (Dev: docker-entrypoint-initdb.d,
-    Prod: ConfigMap en K8s). Este método solo hace safety checks:
+    Las tablas y roles ya fueron creados por init.sql. Este método
+    solo ejecuta migraciones mínimas (columnas nuevas en tablas
+    existentes) de forma idempotente (IF NOT EXISTS).
 
-    1. `create_all(checkfirst=True)` — crea SOLO las tablas que no existen.
-    2. `ALTER TABLE IF NOT EXISTS` — agrega columnas nuevas a tablas ya existentes
-       sin romper si la columna ya está.
+    NO usa create_all — en K8s las tablas ya existen y create_all
+    con un engine asincrónico puede corromper el pool de conexiones.
     """
     async with engine.begin() as conn:
-        # 1. Crear tablas faltantes sin tocar las que ya están
-        await conn.run_sync(Base.metadata.create_all, checkfirst=True)
-
-        # 2. Agregar columnas nuevas que init.sql todavía no tiene
-        #    (migración mínima — sin Alembic)
         await conn.execute(
             sa_text(
                 "ALTER TABLE transactions_log "
