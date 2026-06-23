@@ -1,12 +1,12 @@
 # DEO GLORIA
 
-"""POST /transactions/relay — endpoint unificado de reenvío al NCT.
+"""POST /transactions/relay — relay de SPEND firmadas por el estudiante.
 
-Recibe una transacción YA FIRMADA (EARN o SPEND) desde la wallet del
-frontend, la reenvía al NCT, y registra el resultado en TransactionLog.
+Recibe una transacción SPEND YA FIRMADA desde la wallet del estudiante,
+la reenvía al NCT, y registra el resultado en TransactionLog.
 
-Este endpoint NO firma nada — la clave privada del firmante (estudiante
-o admin) nunca llega al backend. Es solo un relay verificador.
+EARN NO pasa por este endpoint — va por POST /admin/earn donde el
+backend firma con la clave institucional.
 """
 
 from __future__ import annotations
@@ -59,32 +59,21 @@ async def relay_transaction(
 
     tx_id = nct_result["tx_id"]
 
-    # 2. Resolver qué usuario (estudiante) es el afectado para el log
-    #
-    #   EARN:  el estudiante es el receiver (recibe tokens)
-    #   SPEND: el estudiante es el sender  (gasta tokens)
-    #
-    # El admin (que firma EARN con su propia wallet) también puede ser
-    # un User. Pero el log se atribuye al estudiante, no al admin.
-    if body.tx_type == "EARN":
-        student_pubkey = body.receiver_pubkey
-    else:  # SPEND
-        student_pubkey = body.sender_pubkey
-
-    student = await _resolve_user_by_pubkey(db, student_pubkey)
+    # 2. El relay solo maneja SPEND (EARN va por POST /admin/earn).
+    #    El estudiante que firma es el sender.
+    student = await _resolve_user_by_pubkey(db, body.sender_pubkey)
 
     # 3. Registrar en TransactionLog (solo si la pubkey matchea un User)
     if student is not None:
         db.add(
             TransactionLog(
                 user_id=student.id,
-                tx_type=body.tx_type,
-                counterparty_pubkey=(
-                    body.sender_pubkey if body.tx_type == "EARN" else body.receiver_pubkey
-                ),
+                tx_type="SPEND",
+                counterparty_pubkey=body.receiver_pubkey,
                 amount=int(body.amount),
                 concept=body.concept,
                 nct_tx_id=tx_id,
+                # triggered_by_admin_id queda NULL (SPEND no tiene admin)
             )
         )
         await db.commit()

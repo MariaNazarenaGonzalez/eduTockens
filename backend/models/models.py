@@ -157,6 +157,7 @@ class TransactionLog(Base):
     amount: Mapped[int] = mapped_column(Integer, nullable=False)
     concept: Mapped[str] = mapped_column(String(128), nullable=False)
     nct_tx_id: Mapped[str | None] = mapped_column(String(100))
+    triggered_by_admin_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     user: Mapped["User"] = relationship(back_populates="transactions")

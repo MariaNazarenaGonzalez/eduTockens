@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="es">
+<!-- DEO GLORIA -->
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cartera · EduTokens</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --cream: #FBF7F0;
+      --ink: #1A1F2E;
+      --ink-light: #4A5068;
+      --crimson: #C41E3A;
+      --gold: #B8860B;
+      --green: #2D6A4F;
+      --rule: #D4C9B8;
+      --surface: #F4EFE6;
+      --surface-hover: #EDE6D8;
+      --radius: 6px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Newsreader', Georgia, 'Times New Roman', serif;
+      background: var(--cream);
+      color: var(--ink);
+      min-height: 100vh;
+      padding: 32px 16px 64px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .ledger {
+      width: 100%;
+      max-width: 640px;
+    }
+
+    /* ── Masthead ─────────────────────────────────────────────── */
+    .masthead {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      border-bottom: 1px solid var(--ink);
+      padding-bottom: 12px;
+      margin-bottom: 32px;
+    }
+    .masthead h1 {
+      font-family: 'Newsreader', serif;
+      font-size: 22px;
+      font-weight: 500;
+      font-style: italic;
+      letter-spacing: -0.3px;
+    }
+    .masthead nav a {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--ink-light);
+      text-decoration: none;
+      margin-left: 20px;
+      letter-spacing: 0.5px;
+    }
+    .masthead nav a:hover { color: var(--crimson); }
+
+    /* ── Balance Card ─────────────────────────────────────────── */
+    .balance-card {
+      background: var(--surface);
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      margin-bottom: 24px;
+      position: relative;
+    }
+    .balance-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 3px;
+      background: var(--crimson);
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .balance-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--ink-light);
+      margin-bottom: 4px;
+    }
+    .balance-amount {
+      font-family: 'DM Mono', monospace;
+      font-size: 48px;
+      font-weight: 500;
+      line-height: 1;
+      color: var(--ink);
+    }
+    .balance-unit {
+      font-family: 'Newsreader', serif;
+      font-size: 20px;
+      font-style: italic;
+      color: var(--ink-light);
+      margin-left: 4px;
+    }
+    .balance-sub {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--rule);
+    }
+    .nonce-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--ink-light);
+    }
+    .nonce-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    .nonce-value {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--ink);
+    }
+
+    /* ── Public Key ───────────────────────────────────────────── */
+    .pubkey-card {
+      background: var(--surface);
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 24px;
+    }
+    .pubkey-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .pubkey-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--ink-light);
+    }
+    .pubkey-value {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      color: var(--ink);
+      word-break: break-all;
+      line-height: 1.5;
+      letter-spacing: 0.5px;
+    }
+    .btn-copy {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      padding: 4px 12px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: transparent;
+      cursor: pointer;
+      color: var(--ink-light);
+      transition: all 0.15s;
+    }
+    .btn-copy:hover { border-color: var(--ink); color: var(--ink); }
+    .btn-copy.copied { background: var(--green); color: white; border-color: var(--green); }
+
+    /* ── Wallet Status ────────────────────────────────────────── */
+    .status-row {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--ink-light);
+      margin-bottom: 24px;
+      padding: 0 4px;
+      display: flex;
+      gap: 16px;
+    }
+    .status-dot {
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      margin-right: 4px;
+    }
+    .status-dot.green { background: var(--green); }
+    .status-dot.amber { background: var(--gold); }
+
+    /* ── Section Header ───────────────────────────────────────── */
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      border-bottom: 1px solid var(--ink);
+      padding-bottom: 6px;
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--ink-light);
+    }
+    .section-count {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--ink-light);
+    }
+
+    /* ── Transaction Ledger ───────────────────────────────────── */
+    .tx-list {
+      background: var(--surface);
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .tx-row {
+      display: grid;
+      grid-template-columns: 48px 1fr 72px auto;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--rule);
+      font-family: 'Newsreader', serif;
+      font-size: 15px;
+      gap: 8px;
+    }
+    .tx-row:last-child { border-bottom: none; }
+    .tx-row:hover { background: var(--surface-hover); }
+    .tx-type {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 1px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      text-align: center;
+    }
+    .tx-type.earn { color: var(--green); background: rgba(45,106,79,0.08); }
+    .tx-type.spend { color: var(--crimson); background: rgba(196,30,58,0.06); }
+    .tx-concept {
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tx-amount {
+      font-family: 'DM Mono', monospace;
+      font-size: 14px;
+      text-align: right;
+    }
+    .tx-amount.earn { color: var(--green); }
+    .tx-amount.spend { color: var(--crimson); }
+    .tx-date {
+      font-size: 11px;
+      color: var(--ink-light);
+      text-align: right;
+      white-space: nowrap;
+    }
+    .tx-empty {
+      padding: 32px 16px;
+      text-align: center;
+      color: var(--ink-light);
+      font-style: italic;
+    }
+
+    /* ── Admin Zone ───────────────────────────────────────────── */
+    .admin-zone {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid var(--rule);
+    }
+    .admin-zone summary {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--ink-light);
+      cursor: pointer;
+      margin-bottom: 12px;
+    }
+    .reset-form {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .reset-input {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      padding: 8px 12px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--cream);
+      flex: 1;
+      outline: none;
+    }
+    .reset-input:focus { border-color: var(--crimson); }
+    .btn-reset {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      padding: 8px 16px;
+      border: 1px solid var(--crimson);
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--crimson);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .btn-reset:hover:not(:disabled) { background: var(--crimson); color: white; }
+    .btn-reset:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Toast ────────────────────────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--ink);
+      color: var(--cream);
+      padding: 10px 20px;
+      border-radius: var(--radius);
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .toast.show { opacity: 1; }
+
+    /* ── Responsive ───────────────────────────────────────────── */
+    @media (max-width: 480px) {
+      .balance-amount { font-size: 36px; }
+      .tx-row { grid-template-columns: 40px 1fr 60px; }
+      .tx-date { display: none; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="ledger">
+    <!-- Masthead -->
+    <div class="masthead">
+      <h1>Academic Ledger</h1>
+      <nav>
+        <a href="home.html">Inicio</a>
+        <a href="marketplace.html">Canjear</a>
+        <a href="profile.html">Perfil</a>
+      </nav>
+    </div>
+
+    <!-- Balance -->
+    <div class="balance-card">
+      <div class="balance-label">Saldo disponible</div>
+      <div class="balance-amount">
+        <span id="balance-amount">—</span><span class="balance-unit">pts</span>
+      </div>
+      <div class="balance-sub">
+        <div class="nonce-bar">
+          <span class="nonce-dot"></span>
+          <span>Nonce</span>
+          <span class="nonce-value" id="nonce-value">—</span>
+        </div>
+        <div style="font-size:12px; color:var(--ink-light);">
+          Pendientes: <span id="pending-nonce" style="font-family:'DM Mono',monospace;">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Public Key -->
+    <div class="pubkey-card">
+      <div class="pubkey-header">
+        <span class="pubkey-label">Clave Pública</span>
+        <button class="btn-copy" id="btn-copy" onclick="copyPubkey()">Copiar</button>
+      </div>
+      <div class="pubkey-value" id="pubkey-value">—</div>
+    </div>
+
+    <!-- Wallet Status -->
+    <div class="status-row">
+      <span id="wallet-status">Verificando...</span>
+    </div>
+
+    <!-- Transaction History -->
+    <div class="section-header">
+      <span class="section-title">Historial de Transacciones</span>
+      <span class="section-count" id="tx-count">—</span>
+    </div>
+    <div class="tx-list" id="tx-list">
+      <div class="tx-empty">Cargando...</div>
+    </div>
+
+    <!-- Admin Zone -->
+    <details class="admin-zone">
+      <summary>⚙ Zona de administración</summary>
+      <p style="font-size:12px; color:var(--ink-light); margin-bottom:12px; margin-top:4px;">
+        Para resetear tu wallet, tipeá <strong style="font-family:'DM Mono',monospace;">ELIMINAR</strong> y confirmá.
+        Esto borra tu clave privada cifrada del navegador. Irreversible.
+      </p>
+      <div class="reset-form">
+        <input type="text" class="reset-input" id="reset-input"
+          placeholder="Escribí ELIMINAR para confirmar"
+          oninput="onResetInput()" autocomplete="off">
+        <button class="btn-reset" id="btn-reset" disabled onclick="resetWallet()">
+          Reset Wallet
+        </button>
+      </div>
+    </details>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script src="../js/common.js"></script>
+  <script src="../js/crypto-auth.js"></script>
+  <script src="../js/wallet-crypto.js"></script>
+  <script src="../js/tx-signer.js"></script>
+  <script src="../js/wallet.js"></script>
+  <script src="../js/wallet-page.js"></script>
+</body>
+</html>

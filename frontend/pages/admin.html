@@ -68,34 +68,8 @@
           <input type="text" id="emit-concept" class="input" placeholder="Ej: PARCIAL1, ASISTENCIA_2026-06-05">
         </div>
 
-        <button class="btn btn-primary" style="width: 100%; margin: 20px 0;" onclick="emitPointsSigned()">✍️ Emitir
+        <button class="btn btn-primary" style="width: 100%; margin: 20px 0;" onclick="emitPoints()">Emitir
           Puntos</button>
-      </div>
-
-      <!-- Password Modal (para firma local del admin) -->
-      <div id="password-modal" class="modal" style="display: none;">
-        <div class="modal-content">
-          <h3 style="margin: 0 0 8px; font-size: 18px;">🔐 Contraseña del Admin</h3>
-          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
-            Ingresá tu contraseña para descifrar tu clave privada y firmar la emisión.
-          </p>
-          <input type="password" id="modal-password" class="input"
-            placeholder="Contraseña" style="margin-bottom: 12px;"
-            autocomplete="current-password">
-          <div style="display: flex; gap: 8px;">
-            <button class="btn btn-outline" style="flex: 1; margin: 0;"
-              onclick="closePasswordModal()">Cancelar</button>
-            <button class="btn btn-primary" style="flex: 1; margin: 0;"
-              onclick="confirmEarnWithPassword()">Firmar y Emitir</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Loading Overlay -->
-      <div id="loading-overlay" class="modal" style="display: none;">
-        <div class="modal-content" style="text-align: center;">
-          <p id="loading-text" style="font-size: 14px; color: var(--text-muted);">⏳ Procesando...</p>
-        </div>
       </div>
 
       <!-- Products Tab -->
@@ -212,10 +186,6 @@
   </div>
 
   <script src="../js/common.js"></script>
-  <script src="../js/crypto-auth.js"></script>
-  <script src="../js/wallet-crypto.js"></script>
-  <script src="../js/tx-signer.js"></script>
-  <script src="../js/wallet.js"></script>
   <script src="../js/admin.js"></script>
 </body>
 

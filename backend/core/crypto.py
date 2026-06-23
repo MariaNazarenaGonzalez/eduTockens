@@ -100,6 +100,35 @@ def compute_tx_id(
 
 
 # ---------------------------------------------------------------------------
+# Firma institucional
+# ---------------------------------------------------------------------------
+
+
+def sign_message(private_key_hex: str, message: str) -> str:
+    """Firma `message` (UTF-8) con una clave privada Ed25519.
+
+    Usado exclusivamente para firmar EARN con la clave institucional
+    de la universidad. La clave privada vive en `settings.authority_private_key`
+    y nunca se expone.
+
+    Devuelve la firma como 128 hex chars.
+    """
+    try:
+        priv_bytes = bytes.fromhex(private_key_hex)
+    except ValueError as exc:
+        raise CryptoError(f"Clave privada inválida (no es hex): {exc}") from exc
+
+    if len(priv_bytes) != 32:
+        raise CryptoError(
+            f"Clave privada debe ser 32 bytes (64 hex chars), se recibieron {len(priv_bytes)} bytes"
+        )
+
+    private_key = Ed25519PrivateKey.from_private_bytes(priv_bytes)
+    signature = private_key.sign(message.encode("utf-8"))
+    return signature.hex()
+
+
+# ---------------------------------------------------------------------------
 # Verificación de firmas
 # ---------------------------------------------------------------------------
 

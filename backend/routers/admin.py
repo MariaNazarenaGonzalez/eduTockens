@@ -1,9 +1,11 @@
 # DEO GLORIA
 
-"""Endpoints de administración: emisión de puntos (EARN vía relay),
-resolución legajo→pubkey, gestión de vendors y productos,
-estadísticas globales.  El backend NO firma EARN — lo hace la
-wallet del admin en el navegador.
+"""Endpoints de administración: emisión de puntos (EARN institucional),
+gestión de vendors, productos, estadísticas globales.
+
+El backend firma EARN con la clave institucional de la universidad
+(AUTHORITY_PRIVATE_KEY). Los admins son operadores autorizados que
+disparan emisiones; la clave privada institucional nunca sale del backend.
 
 Todos requieren rol admin (Depends(get_current_admin)).
 """
@@ -11,7 +13,6 @@ Todos requieren rol admin (Depends(get_current_admin)).
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -22,6 +23,8 @@ from core.security import get_current_admin
 from models.models import Product, Purchase, TransactionLog, User, Vendor
 from schemas.schemas import (
     AdminStats,
+    EarnRequest,
+    EarnResponse,
     ProductCreate,
     ProductResponse,
     ProductUpdate,
@@ -35,44 +38,59 @@ router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(get_cu
 
 
 # ---------------------------------------------------------------------------
-# Resolve — traduce legajo → pubkey para la wallet del admin
+# EARN — el backend firma con la clave institucional
 # ---------------------------------------------------------------------------
 
 
-class ResolveResponse(BaseModel):
-    public_key: str
-    student_name: str
+@router.post("/earn", response_model=EarnResponse)
+async def emit_earn(
+    body: EarnRequest,
+    current_admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+) -> EarnResponse:
+    """Emite puntos a un estudiante. El admin autenticado solo proporciona
+    legajo + amount + concept; el backend resuelve la pubkey del estudiante,
+    consulta el nonce de la autoridad al NCT, firma con la clave institucional
+    y envía la transacción.
 
-
-@router.get("/resolve", response_model=ResolveResponse)
-async def resolve_legajo(legajo: str, db: AsyncSession = Depends(get_db)) -> ResolveResponse:
-    """Traduce un legajo a su clave pública.  Lo usa la wallet del admin
-    para saber a qué pubkey emitir un EARN.
+    Registra `triggered_by_admin_id` en TransactionLog para audit trail.
     """
-    result = await db.execute(select(User).where(User.legajo == legajo))
+    # 1. Resolver legajo → estudiante
+    result = await db.execute(select(User).where(User.legajo == body.legajo))
     student = result.scalar_one_or_none()
     if student is None:
-        raise HTTPException(status_code=404, detail=f"No existe un estudiante con legajo {legajo}")
+        raise HTTPException(status_code=404, detail=f"No existe un estudiante con legajo {body.legajo}")
 
-    return ResolveResponse(public_key=student.public_key, student_name=student.name)
-
-
-# ---------------------------------------------------------------------------
-# Account — nonce de la autoridad para que la wallet del admin pueda firmar
-# ---------------------------------------------------------------------------
-
-
-@router.get("/account")
-async def admin_account() -> dict:
-    """Devuelve la cuenta NCT de la autoridad académica (balance + pending_nonce).
-    La wallet del admin necesita el nonce antes de firmar un EARN.
-    """
-    from core.config import settings
-
+    # 2. Emitir EARN (backend firma con clave institucional)
     try:
-        return await nct_client.get_account(settings.authority_public_key)
+        nct_result = await nct_client.emit_earn(
+            receiver_pubkey=student.public_key,
+            amount=body.amount,
+            concept=body.concept,
+            triggered_by_admin_id=current_admin.id,
+        )
     except NCTError as exc:
-        raise HTTPException(status_code=502, detail=f"No se pudo consultar el NCT: {exc}")
+        raise HTTPException(status_code=502, detail=f"NCT rechazó la transacción: {exc}") from exc
+
+    tx_id = nct_result["tx_id"]
+
+    # 3. Audit trail: quién disparó este EARN
+    db.add(
+        TransactionLog(
+            user_id=student.id,
+            tx_type="EARN",
+            counterparty_pubkey=student.public_key,
+            amount=int(body.amount),
+            concept=body.concept,
+            nct_tx_id=tx_id,
+            triggered_by_admin_id=current_admin.id,
+        )
+    )
+    await db.commit()
+
+    return EarnResponse(
+        tx_id=tx_id, legajo=body.legajo, amount=body.amount, concept=body.concept
+    )
 
 
 # ---------------------------------------------------------------------------

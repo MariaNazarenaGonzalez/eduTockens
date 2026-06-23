@@ -190,6 +190,26 @@ class PurchaseLogResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Earn — el backend firma con la clave institucional.
+# El admin solo manda legajo + amount + concept; el backend resuelve
+# la pubkey y firma con AUTHORITY_PRIVATE_KEY.
+# ---------------------------------------------------------------------------
+
+
+class EarnRequest(BaseModel):
+    legajo: str = Field(min_length=1, max_length=20)
+    amount: int = Field(gt=0, le=1_000_000_000)
+    concept: str = Field(min_length=1, max_length=128)
+
+
+class EarnResponse(BaseModel):
+    tx_id: str
+    legajo: str
+    amount: int
+    concept: str
+
+
+# ---------------------------------------------------------------------------
 # Transactions log (historial)
 # ---------------------------------------------------------------------------
 
@@ -201,6 +221,7 @@ class TransactionLogResponse(BaseModel):
     amount: int
     concept: str
     nct_tx_id: Optional[str]
+    triggered_by_admin_id: Optional[int]
     created_at: datetime
 
     model_config = {"from_attributes": True}

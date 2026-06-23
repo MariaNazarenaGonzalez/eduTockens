@@ -143,7 +143,7 @@ data:
     -- ATENCIÓN — REEMPLAZAR EN PRODUCCIÓN / EN CUALQUIER ENTORNO COMPARTIDO:
     -- La clave pública de abajo corresponde a un par Ed25519 generado solo para
     -- desarrollo local. La clave privada correspondiente (NO se guarda en el
-    -- repositorio) debe coincidir con ACADEMIC_AUTHORITY_PRIVATE_KEY del backend,
+    -- repositorio) debe coincidir con AUTHORITY_PRIVATE_KEY del backend,
     -- que a su vez debe coincidir con AUTHORITY_PUBKEY configurado en el NCT.
     --
     -- Par de desarrollo (generar uno propio para cualquier otro entorno):

@@ -25,16 +25,21 @@ class Settings(BaseSettings):
     nct_base_url: str = "http://nct:8080"
 
     # ------------------------------------------------------------------
-    # Autoridad académica
+    # Autoridad académica (CLAVE INSTITUCIONAL)
     #
-    # Solo la clave pública. La clave privada NUNCA vive en el backend —
-    # el administrador firma EARN desde su wallet en el navegador.
+    # Esta clave NO pertenece a un usuario persona. Es la clave de la
+    # universidad como entidad emisora de tokens. Vive en el backend
+    # porque la emisión es un acto institucional, no personal.
     #
-    # `authority_public_key` DEBE coincidir con AUTHORITY_PUBKEY del NCT
-    # (nct/.env). Se usa para consultar el nonce del admin vía
-    # GET /admin/account.
+    # La clave privada NUNCA se loguea, NUNCA se expone en ningún endpoint,
+    # NUNCA se commitea. En producción debe ir en un Secret de Kubernetes,
+    # no en texto plano en .env.
+    #
+    # `authority_public_key` DEBE ser idéntica a AUTHORITY_PUBKEY del NCT
+    # (nct/.env). Si no coinciden, todo EARN será rechazado con 400.
     # ------------------------------------------------------------------
     authority_public_key: str = ""
+    authority_private_key: str = ""
 
     # ------------------------------------------------------------------
     # Auth — challenge firmado (Ed25519, sin password)

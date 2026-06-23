@@ -42,16 +42,16 @@ spec:
             secretKeyRef:
               name: backend-secret
               key: JWT_SECRET
-        - name: ACADEMIC_AUTHORITY_PRIVATE_KEY
+        - name: AUTHORITY_PRIVATE_KEY
           valueFrom:
             secretKeyRef:
               name: backend-secret
-              key: ACADEMIC_AUTHORITY_PRIVATE_KEY
-        - name: ACADEMIC_AUTHORITY_PUBLIC_KEY
+              key: AUTHORITY_PRIVATE_KEY
+        - name: AUTHORITY_PUBLIC_KEY
           valueFrom:
             secretKeyRef:
               name: backend-secret
-              key: ACADEMIC_AUTHORITY_PUBLIC_KEY
+              key: AUTHORITY_PUBLIC_KEY
         # ── Configuración (usa $(POSTGRES_PASSWORD) de arriba) ──
         - name: DATABASE_URL
           value: "postgresql+asyncpg://postgres:$(POSTGRES_PASSWORD)@postgres.apps.svc.cluster.local:5432/academic_points"

@@ -112,6 +112,11 @@ CREATE TABLE IF NOT EXISTS transactions_log (
         CHECK (tx_type IN ('EARN', 'SPEND'))
 );
 
+-- Columna agregada (audit trail): qué admin disparó cada EARN.
+-- NULL para SPEND (el estudiante firma su propia compra).
+ALTER TABLE transactions_log
+ADD COLUMN IF NOT EXISTS triggered_by_admin_id INTEGER REFERENCES users(id);
+
 -- ----------------------------------------------------------------------------
 -- Índices
 -- ----------------------------------------------------------------------------
@@ -128,22 +133,24 @@ CREATE INDEX IF NOT EXISTS idx_transactions_log_user_id ON transactions_log(user
 -- Seed de desarrollo — Administrador
 --
 -- ATENCIÓN — REEMPLAZAR EN PRODUCCIÓN / EN CUALQUIER ENTORNO COMPARTIDO:
--- La clave pública de abajo corresponde a un par Ed25519 generado solo para
--- desarrollo local. La clave privada correspondiente (NO se guarda en el
--- repositorio) debe coincidir con ACADEMIC_AUTHORITY_PRIVATE_KEY del backend,
--- que a su vez debe coincidir con AUTHORITY_PUBKEY configurado en el NCT.
+-- La clave pública de abajo es SOLO para autenticación del admin (challenge
+-- firmado). NO es la clave institucional que firma EARN — esa vive en
+-- AUTHORITY_PUBLIC_KEY / AUTHORITY_PRIVATE_KEY del backend (.env) y debe
+-- coincidir con AUTHORITY_PUBKEY del NCT.
 --
--- Par de desarrollo (generar uno propio para cualquier otro entorno):
---   private (NO commitear, va solo en .env del backend):
---     20139855d1c596f918cdbefa75108b469fcd96e9c597b014385ab9b33e7503f7
---   public (la que se inserta abajo, y la que debe configurarse como
---   AUTHORITY_PUBKEY en el NCT):
---     4bda9548d161d7edf80fc1ac34a09e4c609db55bfa5a58fe44c000ddae936a74
+-- Par de desarrollo para AUTENTICACIÓN del admin (generar uno propio):
+--   private: 802c2f7080cf78f619a8856c408546ccbe3e3201e8f40c7b15c1d33fa5fb0f13
+--   public:  a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2
+--   (nota: par genérico de ejemplo — generar uno real para desarrollo)
 --
 -- Password de desarrollo: "admin123" (CAMBIAR en cualquier entorno
--- compartido/productivo). Este mismo password es el que el admin usa para
--- cifrar su clave privada en localStorage Y para autenticarse contra el
--- backend — ver core/security.py.
+-- compartido/productivo).
+--
+-- Par INSTITUCIONAL (el que firma EARN) — NO está en esta tabla:
+--   private (NO commitear, va solo en .env del backend):
+--     20139855d1c596f918cdbefa75108b469fcd96e9c597b014385ab9b33e7503f7
+--   public (debe configurarse como AUTHORITY_PUBKEY en el NCT):
+--     4bda9548d161d7edf80fc1ac34a09e4c609db55bfa5a58fe44c000ddae936a74
 -- ----------------------------------------------------------------------------
 INSERT INTO users (legajo, name, email, public_key, password_hash, role_id)
 VALUES (
