@@ -4,13 +4,15 @@
 
 from typing import Optional
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """
     Application configuration loaded from environment variables
     """
+
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
 
     # Database
     database_url: str = "postgresql+asyncpg://postgres:postgres@db:5432/academic_points"
@@ -53,10 +55,6 @@ class Settings(BaseSettings):
 
     # Application
     debug: bool = False
-
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
 
 
 # Create settings instance

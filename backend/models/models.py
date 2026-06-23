@@ -72,7 +72,10 @@ class User(Base):
 
     role: Mapped["Role"] = relationship(back_populates="users")
     purchases: Mapped[list["Purchase"]] = relationship(back_populates="user")
-    transactions: Mapped[list["TransactionLog"]] = relationship(back_populates="user")
+    transactions: Mapped[list["TransactionLog"]] = relationship(
+        back_populates="user",
+        foreign_keys="TransactionLog.user_id",
+    )
 
     @property
     def nct_pubkey(self) -> str:
