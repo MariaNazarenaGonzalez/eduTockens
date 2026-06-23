@@ -148,12 +148,12 @@ CREATE INDEX IF NOT EXISTS idx_transactions_log_user_id ON transactions_log(user
 --   Docker:      backend/.env → AUTHORITY_PRIVATE_KEY
 --   NCT:         AUTHORITY_PUBKEY (debe coincidir con la pubkey de arriba)
 -- ----------------------------------------------------------------------------
-INSERT INTO users (legajo, name, email, public_key, password_hash, role_id)
-VALUES (
-    'admin',
-    'Administrador',
-    'admin@edutoken.com',
-    'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2',
-    '$2b$12$ajaa77ta/BLuedTF5bFfju.Uj9GaFQajXT8Hrxv8JZ2HuDnxfS762',
-    (SELECT id FROM roles WHERE name = 'admin')
-) ON CONFLICT DO NOTHING;
+-- INSERT INTO users (legajo, name, email, public_key, password_hash, role_id)
+-- VALUES (
+--     'admin',
+--     'Administrador',
+--     'admin@edutoken.com',
+--     'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2',
+--     '$2b$12$ajaa77ta/BLuedTF5bFfju.Uj9GaFQajXT8Hrxv8JZ2HuDnxfS762',
+--     (SELECT id FROM roles WHERE name = 'admin')
+-- ) ON CONFLICT DO NOTHING;
