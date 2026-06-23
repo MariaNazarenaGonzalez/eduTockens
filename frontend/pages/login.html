@@ -139,29 +139,71 @@
       btn.innerHTML = '<span class="spinner-inline"></span> Ingresando...';
 
       try {
-        // 1. Descifrar clave privada del wallet local
-        let privateKeyHex;
-        try {
-          privateKeyHex = await decryptStoredPrivateKey(identifier, password);
-        } catch (e) {
-          // Si no hay wallet, mostrar mensaje claro y sugerir modo avanzado
-          throw new Error(
-            'No se encontró una clave privada cifrada para este usuario en este navegador. ' +
-            'Si ya te registraste desde otro navegador, usá el "Modo avanzado" para ingresar ' +
-            'con tu clave privada manualmente.'
-          );
+        if (currentRole === 'admin') {
+          // ── Admin: wallet custodial, el backend firma el challenge ──
+          await doAdminLogin(identifier, password, btn);
+        } else {
+          // ── Estudiante: wallet en el navegador ──
+          // 1. Descifrar clave privada del wallet local
+          let privateKeyHex;
+          try {
+            privateKeyHex = await decryptStoredPrivateKey(identifier, password);
+          } catch (e) {
+            throw new Error(
+              'No se encontró una clave privada cifrada para este usuario en este navegador. ' +
+              'Si ya te registraste desde otro navegador, usá el "Modo avanzado" para ingresar ' +
+              'con tu clave privada manualmente.'
+            );
+          }
+
+          // 2. Firmar challenge
+          const challenge = await fetchAuthChallenge();
+          const signature = await signChallengeWithPrivateKey(privateKeyHex, challenge);
+
+          // 3. Login
+          await doLogin(identifier, password, challenge, signature, btn);
         }
-
-        // 2. Firmar challenge
-        const challenge = await fetchAuthChallenge();
-        const signature = await signChallengeWithPrivateKey(privateKeyHex, challenge);
-
-        // 3. Login
-        await doLogin(identifier, password, challenge, signature, btn);
       } catch (error) {
         showError(error.message);
         btn.disabled = false;
         btn.innerHTML = 'Ingresar';
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // Admin login — custodial (el backend tiene la clave privada)
+    // -----------------------------------------------------------------------
+
+    async function doAdminLogin(identifier, password, btn) {
+      try {
+        const response = await fetch('/api/auth/admin-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier, password })
+        });
+
+        let data;
+        try {
+          data = await response.json();
+        } catch {
+          throw new Error('Error inesperado del servidor');
+        }
+
+        if (response.ok) {
+          localStorage.setItem('token', data.access_token);
+          localStorage.setItem('role', data.user.role);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          localStorage.setItem('activePublicKey', data.user.public_key);
+          window.location.href = 'admin.html';
+        } else {
+          throw new Error(data?.detail || 'Credenciales inválidas');
+        }
+      } catch (error) {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = 'Ingresar';
+        }
+        throw error;
       }
     }
 

@@ -9,17 +9,18 @@ Uso:
         --email maria@unlu.edu.ar \
         --password "contraseña-segura"
 
-    # Si no pasás --public-key, se genera un par Ed25519 nuevo y
-    # se muestra la clave privada UNA SOLA VEZ (guardala en tu wallet).
+    # Por defecto usa AUTHORITY_PUBLIC_KEY del entorno como public_key del admin.
+    # Si pasás --public-key, se usa esa en su lugar (modo no-custodial / dev).
 
 Qué hace:
-    1. Genera un keypair Ed25519 (o usa el --public-key dado).
+    1. Usa AUTHORITY_PUBLIC_KEY (o --public-key) como clave pública del admin.
     2. Hashea la contraseña con bcrypt.
     3. Inserta el admin en la DB con role='admin'.
-    4. Muestra los datos para configurar la wallet del admin en el navegador.
+    4. Muestra los datos de la cuenta.
 
-La clave privada del admin es SOLO para autenticación (challenge+firma).
-NO es la clave institucional que firma EARN — esa vive en AUTHORITY_PRIVATE_KEY.
+Wallet custodial — la clave privada del admin es AUTHORITY_PRIVATE_KEY,
+que vive en el backend (Secret de Kubernetes). El admin se autentica con
+legajo + contraseña; el backend firma el challenge por él.
 """
 
 from __future__ import annotations
@@ -32,14 +33,14 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-# ── Bcrypt (mismo algoritmo que el backend) ──────────────────────
+# ── Bcrypt (mismo algoritmo que el backend — bcrypt directo, no passlib) ──
 try:
-    from passlib.context import CryptContext
-    _pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    import bcrypt
     def _hash(password: str) -> str:
-        return _pwd.hash(password)
+        """Hashea password con bcrypt. Idéntico a backend/core/security.py:hash_password."""
+        return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 except ImportError:
-    print("ERROR: passlib no instalado. Ejecutá: pip install passlib[bcrypt]")
+    print("ERROR: bcrypt no instalado. Ejecutá: pip install bcrypt")
     sys.exit(1)
 
 # ── Ed25519 ──────────────────────────────────────────────────────
@@ -156,14 +157,23 @@ async def main() -> None:
         print("ERROR: La contraseña debe tener al menos 8 caracteres")
         sys.exit(1)
 
-    private_key = None
     if args.public_key:
         public_key = args.public_key.strip().lower()
         if len(public_key) != 64 or not all(c in "0123456789abcdef" for c in public_key):
             print("ERROR: --public-key debe ser 64 caracteres hex")
             sys.exit(1)
     else:
-        private_key, public_key = _generate_keypair()
+        # Modo custodial: usar la clave institucional (AUTHORITY_PUBLIC_KEY).
+        # La clave privada (AUTHORITY_PRIVATE_KEY) vive en el backend y firma
+        # el challenge durante el login del admin automáticamente.
+        public_key = os.getenv("AUTHORITY_PUBLIC_KEY", "")
+        if not public_key:
+            print("ERROR: AUTHORITY_PUBLIC_KEY no está definida en el entorno.")
+            print("  Pasá --public-key, o asegurate de que la variable esté seteada.")
+            sys.exit(1)
+        if len(public_key) != 64 or not all(c in "0123456789abcdef" for c in public_key):
+            print(f"ERROR: AUTHORITY_PUBLIC_KEY={public_key} no es 64 hex válida")
+            sys.exit(1)
 
     await _create_admin(
         legajo=args.legajo.strip(),
@@ -172,10 +182,6 @@ async def main() -> None:
         password=args.password,
         public_key=public_key,
     )
-
-    if private_key:
-        print(f"\n⚠️  GUARDÁ esta clave privada. Solo se muestra UNA VEZ:")
-        print(f"   Private Key: {private_key}")
 
 
 if __name__ == "__main__":

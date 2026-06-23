@@ -60,6 +60,20 @@ class LoginRequest(BaseModel):
     signature: str = Field(description="128 hex chars — firma Ed25519 del challenge")
 
 
+class AdminLoginRequest(BaseModel):
+    """Login para administradores con wallet custodial.
+
+    Solo requiere identifier + password. El backend firma el challenge
+    internamente con AUTHORITY_PRIVATE_KEY (la clave institucional que
+    ya tiene en el Secret de Kubernetes).
+
+    El public_key del admin en la DB debe ser AUTHORITY_PUBLIC_KEY.
+    """
+
+    identifier: str = Field(description="legajo o email del admin")
+    password: str = Field(min_length=1, max_length=128)
+
+
 class UserPublic(BaseModel):
     id: int
     legajo: str

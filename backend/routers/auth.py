@@ -19,6 +19,7 @@ from core.security import (
 )
 from models.models import Role, User
 from schemas.schemas import (
+    AdminLoginRequest,
     ChallengeResponse,
     LoginRequest,
     RegisterRequest,
@@ -116,6 +117,80 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> Token
 
     await db.refresh(user, attribute_names=["role"])
     role_name = user.role.name if user.role else "student"
+
+    token = create_access_token(
+        user_id=user.id, legajo=user.legajo, role=role_name, public_key=user.public_key
+    )
+
+    return TokenResponse(
+        access_token=token,
+        user=UserPublic(
+            id=user.id,
+            legajo=user.legajo,
+            name=user.name,
+            email=user.email,
+            public_key=user.public_key,
+            role=role_name,
+        ),
+    )
+
+
+@router.post("/admin-login", response_model=TokenResponse)
+async def admin_login(body: AdminLoginRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+    """Login para administradores con wallet custodial.
+
+    Solo requiere identifier + password. El backend firma el challenge
+    internamente con AUTHORITY_PRIVATE_KEY — la clave privada institucional
+    que ya tiene en el Secret de Kubernetes.
+
+    El public_key del admin en la DB debe coincidir con AUTHORITY_PUBLIC_KEY.
+    """
+    from core.config import settings
+    from core.crypto import sign_message
+
+    # 1. Buscar al admin
+    result = await db.execute(
+        select(User).where(
+            (User.legajo == body.identifier) | (User.email == body.identifier)
+        )
+    )
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=401, detail="Credenciales inválidas")
+
+    # 2. Verificar que es admin
+    await db.refresh(user, attribute_names=["role"])
+    if user.role is None or user.role.name != "admin":
+        raise HTTPException(status_code=401, detail="Credenciales inválidas")
+
+    # 3. Verificar password (bcrypt)
+    if not verify_password(body.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Credenciales inválidas")
+
+    # 4. Verificar que la public_key del admin coincide con la institucional
+    if user.public_key != settings.authority_public_key:
+        raise HTTPException(
+            status_code=500,
+            detail="Configuración inválida: la public_key del admin no coincide con AUTHORITY_PUBLIC_KEY",
+        )
+
+    # 5. Challenge firmado por el backend (custodial — el backend tiene la privkey)
+    challenge = generate_challenge()
+    try:
+        signature = sign_message(settings.authority_private_key, challenge)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"No se pudo firmar el challenge: {exc}",
+        ) from exc
+
+    # 6. Verificar la firma (defensa en profundidad)
+    try:
+        verify_challenge_signature(settings.authority_public_key, challenge, signature)
+    except AuthError:
+        raise HTTPException(status_code=500, detail="Firma del backend inconsistente") from None
+
+    role_name = "admin"
 
     token = create_access_token(
         user_id=user.id, legajo=user.legajo, role=role_name, public_key=user.public_key

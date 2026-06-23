@@ -131,6 +131,17 @@ jobs:
 
           echo "Stamped manifests with SHA: ${SHA}"
 
+          # Verificar que el stamp funcionó (evita desplegar :latest por error)
+          if ! grep -q "${SHA}" k8s/backend-deployment.yaml; then
+            echo "ERROR: backend-deployment.yaml NO contiene el SHA ${SHA}. Abortando."
+            exit 1
+          fi
+          if ! grep -q "${SHA}" k8s/frontend-deployment.yaml; then
+            echo "ERROR: frontend-deployment.yaml NO contiene el SHA ${SHA}. Abortando."
+            exit 1
+          fi
+          echo "SHA stamp verificado en ambos deployments."
+
       # ── Deploy to GKE ─────────────────────────────────────────────
       - name: Get GKE credentials
         if: github.event_name == 'push'
