@@ -160,4 +160,5 @@ class TransactionLog(Base):
     triggered_by_admin_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
-    user: Mapped["User"] = relationship(back_populates="transactions")
+    user: Mapped["User"] = relationship(back_populates="transactions", foreign_keys=[user_id])
+    triggered_by_admin: Mapped["User | None"] = relationship(foreign_keys=[triggered_by_admin_id])
