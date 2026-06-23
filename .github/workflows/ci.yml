@@ -1,8 +1,12 @@
-# ci.yml — Build, Push & Deploy de EduTokens-app a GKE
+# ci.yml — Test, Build, Push & Deploy de EduTokens-app a GKE
 #
 # Triggers:
-#   push a main         → build + push + deploy automático
-#   pull_request a main → solo build (verifica que compilan, sin pushear)
+#   push a main         → test + build + push + deploy automático
+#   pull_request a main → solo test + build (verifica que pasan/compilan, sin pushear)
+#
+# Los tests del backend corren como primer step del job. Si fallan, el job
+# se corta ahí (comportamiento default de GitHub Actions) y ningún step
+# posterior (build, push, deploy) se ejecuta.
 #
 # Autenticación a GCP vía Workload Identity Federation (OIDC).
 # Cero service account keys — el token OIDC lo emite GitHub Actions
@@ -11,7 +15,7 @@
 # ⚠️  Requisito previo: el SA github-actions@edutokens-2026.iam.gserviceaccount.com
 #     ya tiene roles/container.developer (definido en iam.tf).
 
-name: CI — Build, Push & Deploy
+name: CI — Test, Build, Push & Deploy
 
 on:
   push:
@@ -26,8 +30,8 @@ env:
   GKE_ZONE: us-central1-a
 
 jobs:
-  build-push-deploy:
-    name: Build, Push & Deploy
+  test-build-push-deploy:
+    name: Test, Build, Push & Deploy
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -36,6 +40,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # ── Backend tests (bloquea el resto del job si fallan) ────────
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run backend tests
+        working-directory: backend
+        run: pytest
 
       # ── SHA tag (inmutable, único por commit) ─────────────────────
       - name: Compute SHA tag
