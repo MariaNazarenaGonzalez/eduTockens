@@ -25,7 +25,7 @@ spec:
       containers:
       - name: backend
         image: us-central1-docker.pkg.dev/edutokens-2026/edutokens-repo/edutokens-backend:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - name: http
           containerPort: 8000
