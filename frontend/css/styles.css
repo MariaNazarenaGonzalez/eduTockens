@@ -686,7 +686,7 @@ select.input {
 
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr;
   gap: 12px;
   margin-bottom: 20px;
 }
@@ -915,6 +915,6 @@ select.input {
   .bottom-nav { max-width: 100%; }
   .metrics-grid    { grid-template-columns: repeat(2, 1fr); }
   .admin-grid      { grid-template-columns: 1fr; }
-  .product-grid    { grid-template-columns: repeat(2, 1fr); }
+  .product-grid    { grid-template-columns: 1fr; }
   .landing-hero    { padding: 48px 24px 32px; }
 }

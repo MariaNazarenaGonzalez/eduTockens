@@ -135,6 +135,73 @@
       } catch (error) {
         console.error('Error loading profile:', error);
       }
+
+      await loadStats(user.legajo);
+    }
+
+    /**
+     * Carga el saldo actual (GET /students/{legajo}/balance) y calcula
+     * ganados/gastados sumando todo el historial de transacciones
+     * (GET /students/{legajo}/transactions, que no pagina — devuelve
+     * el historial completo del estudiante).
+     */
+    async function loadStats(legajo) {
+      const token = localStorage.getItem('token');
+      const authHeaders = { 'Authorization': 'Bearer ' + token };
+
+      try {
+        const balanceResponse = await fetch(`/api/students/${legajo}/balance`, { headers: authHeaders });
+        if (balanceResponse.ok) {
+          const balanceData = await balanceResponse.json();
+          document.getElementById('stat-balance').textContent = balanceData.balance;
+        }
+      } catch (error) {
+        console.error('Error loading balance:', error);
+      }
+
+      try {
+        const txResponse = await fetch(`/api/students/${legajo}/transactions`, { headers: authHeaders });
+        if (txResponse.ok) {
+          const transactions = await txResponse.json();
+          const earned = transactions
+            .filter(tx => tx.tx_type === 'EARN')
+            .reduce((sum, tx) => sum + tx.amount, 0);
+          const spent = transactions
+            .filter(tx => tx.tx_type === 'SPEND')
+            .reduce((sum, tx) => sum + tx.amount, 0);
+
+          document.getElementById('stat-earned').textContent = earned;
+          document.getElementById('stat-spent').textContent = spent;
+          renderRecentTransactions(transactions.slice(0, 5));
+        }
+      } catch (error) {
+        console.error('Error loading transactions:', error);
+      }
+    }
+
+    /**
+     * Renderiza las últimas transacciones en la sección "Transacciones
+     * Recientes" (antes quedaba con el placeholder "Cargando..." fijo).
+     */
+    function renderRecentTransactions(transactions) {
+      const container = document.getElementById('recent-tx');
+
+      if (!transactions || transactions.length === 0) {
+        container.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 13px;">Sin transacciones</div>';
+        return;
+      }
+
+      container.innerHTML = transactions.map(tx => `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--border-light);">
+          <div>
+            <div style="font-size: 13px; font-weight: 500;">${tx.concept || tx.tx_type}</div>
+            <div style="font-size: 11px; color: var(--text-muted);">${new Date(tx.created_at).toLocaleDateString('es-AR')}</div>
+          </div>
+          <div style="font-size: 13px; font-weight: 600; color: ${tx.tx_type === 'EARN' ? 'var(--success)' : 'var(--error)'};">
+            ${tx.tx_type === 'EARN' ? '+' : '-'}${tx.amount}
+          </div>
+        </div>
+      `).join('');
     }
 
     function copyWallet() {
