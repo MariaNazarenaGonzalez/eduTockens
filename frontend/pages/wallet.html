@@ -6,143 +6,30 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cartera · EduTokens</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/styles.css">
   <style>
-    :root {
-      --cream: #FBF7F0;
-      --ink: #1A1F2E;
-      --ink-light: #4A5068;
-      --crimson: #C41E3A;
-      --gold: #B8860B;
-      --green: #2D6A4F;
-      --rule: #D4C9B8;
-      --surface: #F4EFE6;
-      --surface-hover: #EDE6D8;
-      --radius: 6px;
-    }
-
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    body {
-      font-family: 'Newsreader', Georgia, 'Times New Roman', serif;
-      background: var(--cream);
-      color: var(--ink);
-      min-height: 100vh;
-      padding: 32px 16px 64px;
-      display: flex;
-      justify-content: center;
-    }
-
-    .ledger {
-      width: 100%;
-      max-width: 640px;
-    }
-
-    /* ── Masthead ─────────────────────────────────────────────── */
-    .masthead {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      border-bottom: 1px solid var(--ink);
-      padding-bottom: 12px;
-      margin-bottom: 32px;
-    }
-    .masthead h1 {
-      font-family: 'Newsreader', serif;
-      font-size: 22px;
-      font-weight: 500;
-      font-style: italic;
-      letter-spacing: -0.3px;
-    }
-    .masthead nav a {
-      font-family: 'DM Mono', monospace;
-      font-size: 11px;
-      color: var(--ink-light);
-      text-decoration: none;
-      margin-left: 20px;
-      letter-spacing: 0.5px;
-    }
-    .masthead nav a:hover { color: var(--crimson); }
-
-    /* ── Balance Card ─────────────────────────────────────────── */
-    .balance-card {
-      background: var(--surface);
-      border: 1px solid var(--rule);
-      border-radius: var(--radius);
-      padding: 24px 28px;
-      margin-bottom: 24px;
-      position: relative;
-    }
-    .balance-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0; height: 3px;
-      background: var(--crimson);
-      border-radius: var(--radius) var(--radius) 0 0;
-    }
-    .balance-label {
-      font-family: 'DM Mono', monospace;
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      color: var(--ink-light);
-      margin-bottom: 4px;
-    }
-    .balance-amount {
-      font-family: 'DM Mono', monospace;
-      font-size: 48px;
-      font-weight: 500;
-      line-height: 1;
-      color: var(--ink);
-    }
-    .balance-unit {
-      font-family: 'Newsreader', serif;
-      font-size: 20px;
-      font-style: italic;
-      color: var(--ink-light);
-      margin-left: 4px;
-    }
     .balance-sub {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-top: 12px;
       padding-top: 12px;
-      border-top: 1px solid var(--rule);
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
     }
     .nonce-bar {
       display: flex;
       align-items: center;
       gap: 6px;
       font-size: 12px;
-      color: var(--ink-light);
-    }
-    .nonce-dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: var(--green);
-      animation: pulse 2s ease-in-out infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
+      color: rgba(255, 255, 255, 0.8);
     }
     .nonce-value {
       font-family: 'DM Mono', monospace;
       font-size: 11px;
-      color: var(--ink);
+      color: #fff;
     }
 
     /* ── Public Key ───────────────────────────────────────────── */
-    .pubkey-card {
-      background: var(--surface);
-      border: 1px solid var(--rule);
-      border-radius: var(--radius);
-      padding: 16px 20px;
-      margin-bottom: 24px;
-    }
     .pubkey-header {
       display: flex;
       justify-content: space-between;
@@ -151,174 +38,133 @@
     }
     .pubkey-label {
       font-family: 'DM Mono', monospace;
-      font-size: 10px;
+      font-size: 11px;
       text-transform: uppercase;
-      letter-spacing: 2px;
-      color: var(--ink-light);
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
     }
     .pubkey-value {
       font-family: 'DM Mono', monospace;
-      font-size: 13px;
-      color: var(--ink);
+      font-size: 12px;
+      color: var(--text);
       word-break: break-all;
       line-height: 1.5;
-      letter-spacing: 0.5px;
+      background: var(--bg);
+      padding: 12px;
+      border-radius: 8px;
     }
-    .btn-copy {
-      font-family: 'DM Mono', monospace;
-      font-size: 10px;
-      padding: 4px 12px;
-      border: 1px solid var(--rule);
-      border-radius: var(--radius);
-      background: transparent;
-      cursor: pointer;
-      color: var(--ink-light);
-      transition: all 0.15s;
-    }
-    .btn-copy:hover { border-color: var(--ink); color: var(--ink); }
-    .btn-copy.copied { background: var(--green); color: white; border-color: var(--green); }
 
     /* ── Wallet Status ────────────────────────────────────────── */
     .status-row {
       font-family: 'DM Mono', monospace;
-      font-size: 10px;
-      color: var(--ink-light);
+      font-size: 11px;
+      color: var(--text-muted);
       margin-bottom: 24px;
       padding: 0 4px;
       display: flex;
-      gap: 16px;
+      align-items: center;
+      gap: 6px;
     }
     .status-dot {
       display: inline-block;
-      width: 6px; height: 6px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
-      margin-right: 4px;
     }
-    .status-dot.green { background: var(--green); }
-    .status-dot.amber { background: var(--gold); }
-
-    /* ── Section Header ───────────────────────────────────────── */
-    .section-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      border-bottom: 1px solid var(--ink);
-      padding-bottom: 6px;
-      margin-bottom: 12px;
-    }
-    .section-title {
-      font-family: 'DM Mono', monospace;
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      color: var(--ink-light);
-    }
-    .section-count {
-      font-family: 'DM Mono', monospace;
-      font-size: 10px;
-      color: var(--ink-light);
-    }
+    .status-dot.green { background: var(--success); }
+    .status-dot.amber { background: var(--warning); }
 
     /* ── Transaction Ledger ───────────────────────────────────── */
-    .tx-list {
-      background: var(--surface);
-      border: 1px solid var(--rule);
-      border-radius: var(--radius);
-      overflow: hidden;
-    }
     .tx-row {
       display: grid;
-      grid-template-columns: 48px 1fr 72px auto;
+      grid-template-columns: 56px 1fr 72px auto;
       align-items: center;
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--rule);
-      font-family: 'Newsreader', serif;
-      font-size: 15px;
-      gap: 8px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+      gap: 12px;
+      transition: background 0.1s;
     }
     .tx-row:last-child { border-bottom: none; }
-    .tx-row:hover { background: var(--surface-hover); }
+    .tx-row:hover { background: var(--border-light); }
     .tx-type {
       font-family: 'DM Mono', monospace;
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 500;
-      letter-spacing: 1px;
-      padding: 2px 6px;
-      border-radius: 3px;
+      padding: 3px 6px;
+      border-radius: 4px;
       text-align: center;
     }
-    .tx-type.earn { color: var(--green); background: rgba(45,106,79,0.08); }
-    .tx-type.spend { color: var(--crimson); background: rgba(196,30,58,0.06); }
+    .tx-type.earn { color: var(--success); background: var(--success-bg); }
+    .tx-type.spend { color: var(--error); background: var(--error-bg); }
     .tx-concept {
       font-weight: 500;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      color: var(--text);
     }
     .tx-amount {
       font-family: 'DM Mono', monospace;
       font-size: 14px;
       text-align: right;
+      font-weight: 600;
     }
-    .tx-amount.earn { color: var(--green); }
-    .tx-amount.spend { color: var(--crimson); }
+    .tx-amount.earn { color: var(--success); }
+    .tx-amount.spend { color: var(--error); }
     .tx-date {
-      font-size: 11px;
-      color: var(--ink-light);
+      font-size: 12px;
+      color: var(--text-muted);
       text-align: right;
       white-space: nowrap;
     }
     .tx-empty {
       padding: 32px 16px;
       text-align: center;
-      color: var(--ink-light);
+      color: var(--text-muted);
       font-style: italic;
+      font-size: 14px;
     }
 
     /* ── Admin Zone ───────────────────────────────────────────── */
     .admin-zone {
       margin-top: 32px;
-      padding-top: 24px;
-      border-top: 1px solid var(--rule);
+      padding: 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
     }
     .admin-zone summary {
-      font-family: 'DM Mono', monospace;
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      color: var(--ink-light);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
       cursor: pointer;
+      outline: none;
+    }
+    .admin-zone[open] summary {
       margin-bottom: 12px;
     }
     .reset-form {
       display: flex;
-      gap: 8px;
+      gap: 10px;
       align-items: center;
     }
-    .reset-input {
-      font-family: 'DM Mono', monospace;
-      font-size: 12px;
-      padding: 8px 12px;
-      border: 1px solid var(--rule);
-      border-radius: var(--radius);
-      background: var(--cream);
-      flex: 1;
-      outline: none;
-    }
-    .reset-input:focus { border-color: var(--crimson); }
     .btn-reset {
-      font-family: 'DM Mono', monospace;
-      font-size: 11px;
-      padding: 8px 16px;
-      border: 1px solid var(--crimson);
-      border-radius: var(--radius);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 12px 16px;
+      border: 1.5px solid var(--error);
+      border-radius: 10px;
       background: transparent;
-      color: var(--crimson);
+      color: var(--error);
       cursor: pointer;
       white-space: nowrap;
       transition: all 0.15s;
     }
-    .btn-reset:hover:not(:disabled) { background: var(--crimson); color: white; }
+    .btn-reset:hover:not(:disabled) { background: var(--error); color: white; }
     .btn-reset:disabled { opacity: 0.4; cursor: not-allowed; }
 
     /* ── Toast ────────────────────────────────────────────────── */
@@ -327,97 +173,125 @@
       bottom: 24px;
       left: 50%;
       transform: translateX(-50%);
-      background: var(--ink);
-      color: var(--cream);
-      padding: 10px 20px;
-      border-radius: var(--radius);
-      font-family: 'DM Mono', monospace;
-      font-size: 11px;
+      background: var(--surface-dark);
+      color: var(--text-inverse);
+      padding: 12px 24px;
+      border-radius: var(--radius-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
       opacity: 0;
-      transition: opacity 0.3s;
+      transition: opacity 0.3s, transform 0.3s;
       pointer-events: none;
-      z-index: 10;
+      z-index: 1000;
+      box-shadow: var(--shadow-xl);
+      text-align: center;
+      white-space: nowrap;
     }
-    .toast.show { opacity: 1; }
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, -4px);
+    }
 
     /* ── Responsive ───────────────────────────────────────────── */
     @media (max-width: 480px) {
-      .balance-amount { font-size: 36px; }
-      .tx-row { grid-template-columns: 40px 1fr 60px; }
+      .tx-row { grid-template-columns: 56px 1fr 64px; }
       .tx-date { display: none; }
     }
   </style>
 </head>
 
 <body>
-  <div class="ledger">
-    <!-- Masthead -->
-    <div class="masthead">
-      <h1>Academic Ledger</h1>
-      <nav>
-        <a href="home.html">Inicio</a>
-        <a href="marketplace.html">Canjear</a>
-        <a href="profile.html">Perfil</a>
-      </nav>
+  <div class="app">
+    <!-- Header -->
+    <div class="header">
+      <button class="header-back" onclick="history.back()">← Atrás</button>
+      <div class="header-title">Cartera</div>
+      <div style="width: 60px;"></div>
     </div>
 
-    <!-- Balance -->
-    <div class="balance-card">
-      <div class="balance-label">Saldo disponible</div>
-      <div class="balance-amount">
-        <span id="balance-amount">—</span><span class="balance-unit">pts</span>
-      </div>
-      <div class="balance-sub">
-        <div class="nonce-bar">
-          <span class="nonce-dot"></span>
-          <span>Nonce</span>
-          <span class="nonce-value" id="nonce-value">—</span>
+    <!-- Main Content -->
+    <div class="screen active content">
+      <!-- Balance Card -->
+      <div class="balance-card" style="margin-bottom: 20px;">
+        <div class="balance-label">Saldo disponible</div>
+        <div class="balance-amount">
+          <span id="balance-amount">—</span><span class="balance-unit">pts</span>
         </div>
-        <div style="font-size:12px; color:var(--ink-light);">
-          Pendientes: <span id="pending-nonce" style="font-family:'DM Mono',monospace;">—</span>
+        <div class="balance-sub">
+          <div class="nonce-bar">
+            <span class="nonce-dot status-dot green"></span>
+            <span>Nonce</span>
+            <span class="nonce-value" id="nonce-value">—</span>
+          </div>
+          <div style="font-size: 12px; color: rgba(255, 255, 255, 0.8);">
+            Pendientes: <span id="pending-nonce" style="font-family: 'DM Mono', monospace;">—</span>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- Public Key -->
-    <div class="pubkey-card">
-      <div class="pubkey-header">
-        <span class="pubkey-label">Clave Pública</span>
-        <button class="btn-copy" id="btn-copy" onclick="copyPubkey()">Copiar</button>
+      <!-- Public Key -->
+      <div class="card pubkey-card" style="margin-bottom: 20px;">
+        <div class="pubkey-header">
+          <span class="pubkey-label">Clave Pública</span>
+          <button class="btn btn-secondary btn-sm" id="btn-copy" onclick="copyPubkey()">Copiar</button>
+        </div>
+        <div class="pubkey-value" id="pubkey-value">—</div>
       </div>
-      <div class="pubkey-value" id="pubkey-value">—</div>
-    </div>
 
-    <!-- Wallet Status -->
-    <div class="status-row">
-      <span id="wallet-status">Verificando...</span>
-    </div>
-
-    <!-- Transaction History -->
-    <div class="section-header">
-      <span class="section-title">Historial de Transacciones</span>
-      <span class="section-count" id="tx-count">—</span>
-    </div>
-    <div class="tx-list" id="tx-list">
-      <div class="tx-empty">Cargando...</div>
-    </div>
-
-    <!-- Admin Zone -->
-    <details class="admin-zone">
-      <summary>⚙ Zona de administración</summary>
-      <p style="font-size:12px; color:var(--ink-light); margin-bottom:12px; margin-top:4px;">
-        Para resetear tu wallet, tipeá <strong style="font-family:'DM Mono',monospace;">ELIMINAR</strong> y confirmá.
-        Esto borra tu clave privada cifrada del navegador. Irreversible.
-      </p>
-      <div class="reset-form">
-        <input type="text" class="reset-input" id="reset-input"
-          placeholder="Escribí ELIMINAR para confirmar"
-          oninput="onResetInput()" autocomplete="off">
-        <button class="btn-reset" id="btn-reset" disabled onclick="resetWallet()">
-          Reset Wallet
-        </button>
+      <!-- Wallet Status -->
+      <div class="status-row">
+        <span id="wallet-status">Verificando...</span>
       </div>
-    </details>
+
+      <!-- Transaction History -->
+      <div class="section-header">
+        <span class="section-title">Historial de Transacciones</span>
+        <span class="mono" id="tx-count" style="font-size: 12px; color: var(--text-muted);">—</span>
+      </div>
+      <div class="card" style="padding: 0; overflow: hidden; margin-bottom: 20px;">
+        <div class="tx-list" id="tx-list">
+          <div class="tx-empty">Cargando...</div>
+        </div>
+      </div>
+
+      <!-- Admin Zone -->
+      <details class="admin-zone">
+        <summary>⚙ Zona de administración</summary>
+        <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px; margin-top: 8px;">
+          Para resetear tu wallet, tipeá <strong class="mono">ELIMINAR</strong> y confirmá.
+          Esto borra tu clave privada cifrada del navegador. Irreversible.
+        </p>
+        <div class="reset-form">
+          <input type="text" class="input mono" id="reset-input"
+            placeholder="Escribí ELIMINAR para confirmar"
+            oninput="onResetInput()" autocomplete="off">
+          <button class="btn-reset" id="btn-reset" disabled onclick="resetWallet()">
+            Reset Wallet
+          </button>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <div class="bottom-nav">
+    <button class="nav-item" onclick="goTo('home.html')">
+      <div class="nav-icon">🏠</div>
+      <div class="nav-label">Inicio</div>
+    </button>
+    <button class="nav-item active" onclick="goTo('wallet.html')">
+      <div class="nav-icon">💳</div>
+      <div class="nav-label">Cartera</div>
+    </button>
+    <button class="nav-item" onclick="goTo('marketplace.html')">
+      <div class="nav-icon">🎁</div>
+      <div class="nav-label">Canjear</div>
+    </button>
+    <button class="nav-item" onclick="goTo('profile.html')">
+      <div class="nav-icon">👤</div>
+      <div class="nav-label">Perfil</div>
+    </button>
   </div>
 
   <!-- Toast -->
@@ -430,4 +304,5 @@
   <script src="../js/wallet.js"></script>
   <script src="../js/wallet-page.js"></script>
 </body>
+
 </html>
